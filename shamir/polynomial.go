@@ -1,9 +1,9 @@
 package shamir
 
 import (
-	gf "bench-shamir/galois"
 	"crypto/rand"
 	"crypto/subtle"
+	gf "go-shamir/galois"
 )
 
 func makePolynomials(intercepts []uint8, degree int) ([][]uint8, error) {
@@ -56,6 +56,20 @@ func evaluatePolynomialsAt(coefficients [][]uint8, x uint8, out []uint8){
 	copy(out[:N], result)
 }
 
+// genericEvaluatePolynomialsAt assumes x is not 0.
+// coefficients is a ((degree+1)xN) matrix
+func genericEvaluatePolynomialsAt(coefficients [][]uint8, x uint8, out []uint8){
+	N := len(coefficients[0])
+	degree := len(coefficients)-1
+	result := make([]uint8, N)
+
+	// Compute the value at x in all the N polynomials using Horner's method.
+	copy(result, coefficients[degree])
+	for i := degree-1; i >=0; i-- {
+		result = gf.AddVectorGeneric(coefficients[i], gf.MulConstVectorGeneric(x, result))
+	}
+	copy(out[:N], result)
+}
 
 // polynomial represents a polynomial of arbitrary degree
 type polynomial struct {

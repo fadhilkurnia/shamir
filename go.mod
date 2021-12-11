@@ -1,4 +1,4 @@
-module bench-shamir
+module go-shamir
 
 go 1.17
 

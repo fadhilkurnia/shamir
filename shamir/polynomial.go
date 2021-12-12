@@ -3,7 +3,7 @@ package shamir
 import (
 	"crypto/rand"
 	"crypto/subtle"
-	gf "go-shamir/galois"
+	gf "shamir/galois"
 )
 
 func makePolynomials(intercepts []uint8, degree int) ([][]uint8, error) {

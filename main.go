@@ -5,9 +5,9 @@ import (
 	"crypto/cipher"
 	"crypto/rand"
 	"fmt"
-	"go-shamir/shamir"
 	"io"
 	"log"
+	"shamir/shamir"
 	"time"
 )
 

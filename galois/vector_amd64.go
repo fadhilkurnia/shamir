@@ -65,7 +65,8 @@ func galMulSSSE3Xor(low, high, in, out []byte) {
 // bigSwitchover is the size where 64 bytes are processed per loop.
 const bigSwitchover = 128
 
-func galMulSlice(c byte, in, out []byte) []byte {
+func MulConstVector(c byte, in []byte) []byte {
+	out := make([]byte, len(in))
 	origOutPointer := out
 
 	if c == 1 {
@@ -103,7 +104,7 @@ func galMulSlice(c byte, in, out []byte) []byte {
 }
 
 // simple slice xor
-func sliceXor(in, out []byte) []byte {
+func AddVector(in, out []byte) []byte {
 	origOutPointer := out
 
 	if useSSE2 {

@@ -22,13 +22,27 @@ func init() {
 }
 
 // TODO move this to galois package
+func BenchmarkGaloisXorBase1K(b *testing.B) {
+	va := make([]byte, 1_000)
+	vb := make([]byte, 1_000)
+	rand.Read(va)
+	rand.Read(vb)
+	b.SetBytes(int64(len(va))*2)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		for j := 0; j < 1_000; j++ {
+			vb[j] = galois.GalAdd(va[j], vb[j])
+		}
+	}
+}
+
 func BenchmarkGaloisXorGeneric1K(b *testing.B) {
 	bytes1kClone := make([]byte, len(bytes1k))
 	copy(bytes1kClone, bytes1k)
 	b.SetBytes(int64(len(bytes1k))*2)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		galois.AddVectorGeneric(bytes1k, bytes1kClone)
+		bytes1kClone = galois.AddVectorGeneric(bytes1k, bytes1kClone)
 	}
 }
 
@@ -38,7 +52,22 @@ func BenchmarkGaloisXorSIMD1K(b *testing.B) {
 	b.SetBytes(int64(len(bytes1k))*2)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		galois.AddVector(bytes1k, bytes1kClone)
+		bytes1kClone = galois.AddVector(bytes1k, bytes1kClone)
+	}
+}
+
+func BenchmarkGaloisXorBase1M(b *testing.B) {
+	n := 1024*1024
+	va := make([]byte, n)
+	vb := make([]byte, n)
+	rand.Read(va)
+	rand.Read(vb)
+	b.SetBytes(int64(n)*2)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		for j := 0; j < n; j++ {
+			vb[j] = galois.GalAdd(va[j], vb[j])
+		}
 	}
 }
 
@@ -48,7 +77,7 @@ func BenchmarkGaloisXorGeneric1M(b *testing.B) {
 	b.SetBytes(int64(len(bytes1M))*2)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		galois.AddVectorGeneric(bytes1M, bytes100kClone)
+		bytes100kClone = galois.AddVectorGeneric(bytes1M, bytes100kClone)
 	}
 }
 
@@ -58,7 +87,7 @@ func BenchmarkGaloisXorSIMD1M(b *testing.B) {
 	b.SetBytes(int64(len(bytes1M))*2)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		galois.AddVector(bytes1M, bytes100kClone)
+		bytes100kClone = galois.AddVector(bytes1M, bytes100kClone)
 	}
 }
 

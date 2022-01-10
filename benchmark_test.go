@@ -1,10 +1,10 @@
 package main
 
 import (
+	"github.com/fadhilkurnia/shamir/galois"
+	"github.com/fadhilkurnia/shamir/shamir"
 	hcShamir "github.com/hashicorp/vault/shamir"
 	"math/rand"
-	"shamir/galois"
-	"shamir/shamir"
 	"testing"
 )
 

@@ -1,4 +1,4 @@
-module shamir
+module github.com/fadhilkurnia/shamir
 
 go 1.17
 

@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/fadhilkurnia/shamir/galois"
+	"github.com/fadhilkurnia/shamir/krawczyk"
 	"github.com/fadhilkurnia/shamir/shamir"
 	hcShamir "github.com/hashicorp/vault/shamir"
 	"math/rand"
@@ -167,7 +168,7 @@ func BenchmarkSplitBase1M(b *testing.B) {
 	}
 }
 
-func BenchmarkSplitGeneric1M(b *testing.B)  {
+func BenchmarkSplitGeneric1M(b *testing.B) {
 	b.SetBytes(int64(len(bytes1M)))
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -175,10 +176,26 @@ func BenchmarkSplitGeneric1M(b *testing.B)  {
 	}
 }
 
-func BenchmarkSplitSIMD1M(b *testing.B)  {
+func BenchmarkSplitSIMD1M(b *testing.B) {
 	b.SetBytes(int64(len(bytes1M)))
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_, _ = shamir.Split(bytes1M, 4, 2)
+	}
+}
+
+func BenchmarkSplitKrawczyk1K(b *testing.B) {
+	b.SetBytes(int64(len(bytes1k)))
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, _ = krawczyk.Split(bytes1k, 4, 2)
+	}
+}
+
+func BenchmarkSplitKrawczyk10K(b *testing.B) {
+	b.SetBytes(int64(len(bytes10k)))
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, _ = krawczyk.Split(bytes10k, 4, 2)
 	}
 }

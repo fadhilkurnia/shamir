@@ -13,7 +13,7 @@ import (
 // key size: 16 bytes (128 bit)
 // data len type: uint16 (2 bytes), support up to 65 KB secret data
 
-const LenKey = 16
+const LenKey = 24
 const LenLen = 2
 
 func Split(secret []byte, parts, threshold int) ([][]byte, error) {
@@ -27,6 +27,10 @@ func Split(secret []byte, parts, threshold int) ([][]byte, error) {
 	if threshold > parts {
 		return nil, fmt.Errorf(
 			"threshold should be less to the number of parts, #parts=%d $threshold=%d", parts, threshold)
+	}
+	if threshold > 255 || parts > 255 {
+		return nil, fmt.Errorf(
+			"#parts and #threshold should be less than 256, #parts=%d $threshold=%d", parts, threshold)
 	}
 
 	// generate random key
@@ -50,6 +54,13 @@ func Split(secret []byte, parts, threshold int) ([][]byte, error) {
 	encodedSecret, err := encoder.Split(encryptedSecret)
 	if err != nil {
 		return nil, fmt.Errorf("failed to encode the secret: %v", err)
+	}
+	if err := encoder.Encode(encodedSecret); err != nil {
+		return nil, fmt.Errorf("failed to encode the secret: %v", err)
+	}
+	// append idx in the encoded data
+	for i:=0; i < len(encodedSecret); i++ {
+		encodedSecret[i] = append(encodedSecret[i], byte(i))
 	}
 
 	// secret-share the key & len with shamir's secret-sharing
@@ -95,14 +106,31 @@ func Combine(ssData [][]byte, parts, threshold int) ([]byte, error) {
 		return nil, fmt.Errorf(
 			"threshold should be less to the number of parts, #parts=%d $threshold=%d", parts, threshold)
 	}
+	if threshold > 255 || parts > 255 {
+		return nil, fmt.Errorf(
+			"#parts and #threshold should be less than 256, #parts=%d $threshold=%d", parts, threshold)
+	}
+
+	// remove empty shares
+	cleanSSData := make([][]byte, 0)
+	for i := 0; i < len(ssData); i++ {
+		if ssData[i] == nil {
+			continue
+		}
+		cleanSSData = append(cleanSSData, ssData[i])
+	}
+	ssData = cleanSSData
 
 	// split encoded data and secret-shared metadata
 	secretStartIdx := LenKey + LenLen + 1
-	encodedData := make([][]byte, len(ssData))
+	encodedData := make([][]byte, parts)
 	ssMetadata := make([][]byte, len(ssData))
 	for i := 0; i < len(ssData); i++ {
 		ssMetadata[i] = ssData[i][:secretStartIdx]
-		encodedData[i] = ssData[i][secretStartIdx:]
+		if ssData[i][len(ssData[i])-1] >= byte(parts) {
+			continue
+		}
+		encodedData[ssData[i][len(ssData[i])-1]] = ssData[i][secretStartIdx:len(ssData[i])-1]
 	}
 
 	// get the metadata
@@ -120,6 +148,9 @@ func Combine(ssData [][]byte, parts, threshold int) ([]byte, error) {
 		return nil, fmt.Errorf("failed to initialize reed-solomon decoder: %v", err)
 	}
 	var ciphertextBuffer bytes.Buffer
+	if err = decoder.ReconstructData(encodedData); err != nil {
+		return nil, fmt.Errorf("failed to reconstruct data: %v", err)
+	}
 	err = decoder.Join(&ciphertextBuffer, encodedData, int(length))
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode the data: %v", err)

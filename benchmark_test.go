@@ -9,14 +9,17 @@ import (
 	"testing"
 )
 
+var bytes100 []byte
 var bytes1k []byte
 var bytes10k []byte
 var bytes1M []byte
 
 func init() {
+	bytes100 = make([]byte, 100)
 	bytes1k = make([]byte, 1_000)
 	bytes10k = make([]byte, 10_000)
 	bytes1M = make([]byte, 1024*1024)
+	rand.Read(bytes100)
 	rand.Read(bytes1k)
 	rand.Read(bytes10k)
 	rand.Read(bytes1M)
@@ -28,7 +31,7 @@ func BenchmarkGaloisXorBase1K(b *testing.B) {
 	vb := make([]byte, 1_000)
 	rand.Read(va)
 	rand.Read(vb)
-	b.SetBytes(int64(len(va))*2)
+	b.SetBytes(int64(len(va)) * 2)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		for j := 0; j < 1_000; j++ {
@@ -40,7 +43,7 @@ func BenchmarkGaloisXorBase1K(b *testing.B) {
 func BenchmarkGaloisXorGeneric1K(b *testing.B) {
 	bytes1kClone := make([]byte, len(bytes1k))
 	copy(bytes1kClone, bytes1k)
-	b.SetBytes(int64(len(bytes1k))*2)
+	b.SetBytes(int64(len(bytes1k)) * 2)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		bytes1kClone = galois.AddVectorGeneric(bytes1k, bytes1kClone)
@@ -50,7 +53,7 @@ func BenchmarkGaloisXorGeneric1K(b *testing.B) {
 func BenchmarkGaloisXorSIMD1K(b *testing.B) {
 	bytes1kClone := make([]byte, len(bytes1k))
 	copy(bytes1kClone, bytes1k)
-	b.SetBytes(int64(len(bytes1k))*2)
+	b.SetBytes(int64(len(bytes1k)) * 2)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		bytes1kClone = galois.AddVector(bytes1k, bytes1kClone)
@@ -58,12 +61,12 @@ func BenchmarkGaloisXorSIMD1K(b *testing.B) {
 }
 
 func BenchmarkGaloisXorBase1M(b *testing.B) {
-	n := 1024*1024
+	n := 1024 * 1024
 	va := make([]byte, n)
 	vb := make([]byte, n)
 	rand.Read(va)
 	rand.Read(vb)
-	b.SetBytes(int64(n)*2)
+	b.SetBytes(int64(n) * 2)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		for j := 0; j < n; j++ {
@@ -75,7 +78,7 @@ func BenchmarkGaloisXorBase1M(b *testing.B) {
 func BenchmarkGaloisXorGeneric1M(b *testing.B) {
 	bytes100kClone := make([]byte, len(bytes1M))
 	copy(bytes100kClone, bytes1M)
-	b.SetBytes(int64(len(bytes1M))*2)
+	b.SetBytes(int64(len(bytes1M)) * 2)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		bytes100kClone = galois.AddVectorGeneric(bytes1M, bytes100kClone)
@@ -85,7 +88,7 @@ func BenchmarkGaloisXorGeneric1M(b *testing.B) {
 func BenchmarkGaloisXorSIMD1M(b *testing.B) {
 	bytes100kClone := make([]byte, len(bytes1M))
 	copy(bytes100kClone, bytes1M)
-	b.SetBytes(int64(len(bytes1M))*2)
+	b.SetBytes(int64(len(bytes1M)) * 2)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		bytes100kClone = galois.AddVector(bytes1M, bytes100kClone)
@@ -95,7 +98,7 @@ func BenchmarkGaloisXorSIMD1M(b *testing.B) {
 func BenchmarkGaloisMulGeneric1M(b *testing.B) {
 	bytes100kClone := make([]byte, len(bytes1M))
 	copy(bytes100kClone, bytes1M)
-	b.SetBytes(int64(len(bytes1M))*2)
+	b.SetBytes(int64(len(bytes1M)) * 2)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		galois.MulConstVectorGeneric(10, bytes100kClone)
@@ -105,10 +108,22 @@ func BenchmarkGaloisMulGeneric1M(b *testing.B) {
 func BenchmarkGaloisMulSIMD1M(b *testing.B) {
 	bytes100kClone := make([]byte, len(bytes1M))
 	copy(bytes100kClone, bytes1M)
-	b.SetBytes(int64(len(bytes1M))*2)
+	b.SetBytes(int64(len(bytes1M)) * 2)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		galois.MulConstVector(10, bytes100kClone)
+	}
+}
+
+func BenchmarkSplitSIMD100(b *testing.B) {
+	b.SetBytes(int64(len(bytes100)))
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		var results [][]byte
+		results, _ = shamir.Split(bytes100, 4, 2)
+		if len(results) == 0 {
+			break
+		}
 	}
 }
 
@@ -116,11 +131,11 @@ func BenchmarkSplitBase1K(b *testing.B) {
 	b.SetBytes(int64(len(bytes1k)))
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_, _ = hcShamir.Split(bytes1k,5,2)
+		_, _ = hcShamir.Split(bytes1k, 5, 2)
 	}
 }
 
-func BenchmarkSplitGeneric1K(b *testing.B)  {
+func BenchmarkSplitGeneric1K(b *testing.B) {
 	b.SetBytes(int64(len(bytes1k)))
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -128,7 +143,7 @@ func BenchmarkSplitGeneric1K(b *testing.B)  {
 	}
 }
 
-func BenchmarkSplitSIMD1K(b *testing.B)  {
+func BenchmarkSplitSIMD1K(b *testing.B) {
 	b.SetBytes(int64(len(bytes1k)))
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -140,11 +155,11 @@ func BenchmarkSplitBase10K(b *testing.B) {
 	b.SetBytes(int64(len(bytes10k)))
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_, _ = hcShamir.Split(bytes10k,4,2)
+		_, _ = hcShamir.Split(bytes10k, 4, 2)
 	}
 }
 
-func BenchmarkSplitGeneric10K(b *testing.B)  {
+func BenchmarkSplitGeneric10K(b *testing.B) {
 	b.SetBytes(int64(len(bytes10k)))
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -152,7 +167,7 @@ func BenchmarkSplitGeneric10K(b *testing.B)  {
 	}
 }
 
-func BenchmarkSplitSIMD10K(b *testing.B)  {
+func BenchmarkSplitSIMD10K(b *testing.B) {
 	b.SetBytes(int64(len(bytes10k)))
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -164,7 +179,7 @@ func BenchmarkSplitBase1M(b *testing.B) {
 	b.SetBytes(int64(len(bytes1M)))
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_, _ = hcShamir.Split(bytes1M,4,2)
+		_, _ = hcShamir.Split(bytes1M, 4, 2)
 	}
 }
 
@@ -181,6 +196,18 @@ func BenchmarkSplitSIMD1M(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_, _ = shamir.Split(bytes1M, 4, 2)
+	}
+}
+
+func BenchmarkSplitKrawczyk100(b *testing.B) {
+	b.SetBytes(int64(len(bytes100)))
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		var results [][]byte
+		results, _ = krawczyk.Split(bytes100, 4, 2)
+		if len(results) == 0 {
+			break
+		}
 	}
 }
 

@@ -197,27 +197,6 @@ func SplitP(secret []byte, parts, threshold int) ([][]byte, error) {
 		idx = endIdx
 	}
 
-	//for idx, val := range secret {
-	//	wg.Add(1)
-	//	go func(idx int, val byte) {
-	//		defer wg.Done()
-	//
-	//		p, err := makePolynomial(val, uint8(threshold-1))
-	//		if err != nil {
-	//			log.Fatalf("failed to generate polynomial: %s", err.Error())
-	//		}
-	//
-	//		// Generate a `parts` number of (x,y) pairs
-	//		// We cheat by encoding the x value once as the final index,
-	//		// so that it only needs to be stored once.
-	//		for i := 0; i < parts; i++ {
-	//			x := uint8(xCoordinates[i]) + 1
-	//			y := p.evaluate(x)
-	//			out[i][idx] = y
-	//		}
-	//	}(idx, val)
-	//}
-
 	wg.Wait()
 
 	// Return the encoded secrets

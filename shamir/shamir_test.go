@@ -20,22 +20,86 @@ func TestSplitCombine(t *testing.T) {
 	}
 }
 
-func TestSplit100(t *testing.T) {
+func TestSplit100NoDelay(t *testing.T) {
 	secretMsg := make([]byte, 100)
+	var result [][]byte
 	rand.Read(secretMsg)
-	N := 10_000
+	N := 1_000
 
 	durations := make([]time.Duration, N)
 
-	s := time.Now()
-	coefficients := make([]byte, 100)
+	sumtime := int64(0)
 	for i := 0; i < N; i++ {
 		ls :=time.Now()
-		_, _ = rand.Read(coefficients)
+		result, _ = Split(secretMsg, 4, 2)
 		durations[i] = time.Since(ls)
+		sumtime += durations[i].Nanoseconds()
 	}
 
-	t.Logf("(%d) avg. processing time %vns", len(coefficients), time.Since(s).Nanoseconds()/int64(N))
+	t.Logf("(%d) avg. processing time %vns", len(result), sumtime/int64(N))
+	t.Logf("%v", durations)
+}
+
+func TestSplit100And3msDelay(t *testing.T) {
+	secretMsg := make([]byte, 100)
+	var result [][]byte
+	rand.Read(secretMsg)
+	N := 1_000
+
+	durations := make([]time.Duration, N)
+
+	sumtime := int64(0)
+	for i := 0; i < N; i++ {
+		ls :=time.Now()
+		result, _ = Split(secretMsg, 4, 2)
+		durations[i] = time.Since(ls)
+		sumtime += durations[i].Nanoseconds()
+		time.Sleep(3 * time.Millisecond)
+	}
+
+	t.Logf("(%d) avg. processing time %vns", len(result), sumtime/int64(N))
+	t.Logf("%v", durations)
+}
+
+func TestSplit100And5msDelay(t *testing.T) {
+	secretMsg := make([]byte, 100)
+	var result [][]byte
+	rand.Read(secretMsg)
+	N := 1_000
+
+	durations := make([]time.Duration, N)
+
+	sumtime := int64(0)
+	for i := 0; i < N; i++ {
+		ls :=time.Now()
+		result, _ = Split(secretMsg, 4, 2)
+		durations[i] = time.Since(ls)
+		sumtime += durations[i].Nanoseconds()
+		time.Sleep(5 * time.Millisecond)
+	}
+
+	t.Logf("(%d) avg. processing time %vns", len(result), sumtime/int64(N))
+	t.Logf("%v", durations)
+}
+
+func TestSplit100And10msDelay(t *testing.T) {
+	secretMsg := make([]byte, 100)
+	var result [][]byte
+	rand.Read(secretMsg)
+	N := 1_000
+
+	durations := make([]time.Duration, N)
+
+	sumtime := int64(0)
+	for i := 0; i < N; i++ {
+		ls :=time.Now()
+		result, _ = Split(secretMsg, 4, 2)
+		durations[i] = time.Since(ls)
+		sumtime += durations[i].Nanoseconds()
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	t.Logf("(%d) avg. processing time %vns", len(result), sumtime/int64(N))
 	t.Logf("%v", durations)
 }
 

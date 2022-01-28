@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/klauspost/reedsolomon"
+	"math/rand"
 	"reflect"
 	"testing"
+	"time"
 )
 
 func TestEncryptDecrypt(t *testing.T) {
@@ -26,18 +28,6 @@ func TestEncryptDecrypt(t *testing.T) {
 	isEqual := reflect.DeepEqual(secretMsg, plaintext)
 	if !isEqual {
 		t.Errorf("The combined secret is different. Expected: '%v', but got '%v'.\n", string(secretMsg), string(plaintext))
-	}
-}
-
-func TestReedSolomonSplitCombine(t *testing.T) {
-	originalText := []byte("The quick brown fox jumps over the lazy dog")
-	enc, _ := reedsolomon.New(2, 2)
-	encoded, _ := enc.Split(originalText)
-	resBuffer := bytes.Buffer{}
-	enc.Join(&resBuffer, encoded[:3], len(originalText))
-	isEqual := reflect.DeepEqual(resBuffer.Bytes(), originalText)
-	if !isEqual {
-		t.Errorf("The combined secret is different. Expected: '%v', but got '%v'.\n", string(originalText), string(resBuffer.Bytes()))
 	}
 }
 
@@ -81,4 +71,82 @@ func TestSplitCombine2(t *testing.T) {
 	if !isEqual {
 		t.Errorf("The combined secret is different. Expected: '%v', but got '%v'.\n", string(secretMsg), string(combinedShares))
 	}
+}
+
+func TestReedSolomonSplit(t *testing.T) {
+	originalText := []byte("The quick brown fox jumps over the lazy dog")
+	enc, _ := reedsolomon.New(2, 2)
+	encoded, _ := enc.Split(originalText)
+	resBuffer := bytes.Buffer{}
+	enc.Join(&resBuffer, encoded[:3], len(originalText))
+	isEqual := reflect.DeepEqual(resBuffer.Bytes(), originalText)
+	if !isEqual {
+		t.Errorf("The combined secret is different. Expected: '%v', but got '%v'.\n", string(originalText), string(resBuffer.Bytes()))
+	}
+}
+
+
+func TestReedSolomonNoDelay(t *testing.T) {
+	originalData := make([]byte, 10_000)
+	_, _ = rand.Read(originalData)
+
+	N := 1_000
+	durations := make([]time.Duration, N)
+	sumtime := int64(0)
+
+	for i := 0; i < N; i++ {
+		enc, _ := reedsolomon.New(2, 2)
+		startTime := time.Now()
+		encoded, _ := enc.Split(originalData)
+		_ = enc.Encode(encoded)
+		durations[i] = time.Since(startTime)
+		sumtime += durations[i].Nanoseconds()
+	}
+
+	t.Logf("(%d) avg. processing time %vns", len(durations), sumtime/int64(N))
+	t.Logf("%v", durations)
+}
+
+func TestReedSolomon5msDelay(t *testing.T) {
+	originalData := make([]byte, 10_000)
+	_, _ = rand.Read(originalData)
+
+	N := 1_000
+	durations := make([]time.Duration, N)
+	sumtime := int64(0)
+
+	for i := 0; i < N; i++ {
+		enc, _ := reedsolomon.New(2, 2)
+		startTime := time.Now()
+		encoded, _ := enc.Split(originalData)
+		_ = enc.Encode(encoded)
+		durations[i] = time.Since(startTime)
+		sumtime += durations[i].Nanoseconds()
+		time.Sleep(5 * time.Millisecond)
+	}
+
+	t.Logf("(%d) avg. processing time %vns", len(durations), sumtime/int64(N))
+	t.Logf("%v", durations)
+}
+
+func TestReedSolomon10msDelay(t *testing.T) {
+	originalData := make([]byte, 10_000)
+	_, _ = rand.Read(originalData)
+
+	N := 1_000
+	durations := make([]time.Duration, N)
+	sumtime := int64(0)
+
+	for i := 0; i < N; i++ {
+		enc, _ := reedsolomon.New(2, 2)
+		startTime := time.Now()
+		encoded, _ := enc.Split(originalData)
+		_ = enc.Encode(encoded)
+		durations[i] = time.Since(startTime)
+		sumtime += durations[i].Nanoseconds()
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	t.Logf("(%d) avg. processing time %vns", len(durations), sumtime/int64(N))
+	t.Logf("%v", durations)
 }

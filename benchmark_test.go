@@ -7,6 +7,7 @@ import (
 	hcShamir "github.com/hashicorp/vault/shamir"
 	"math/rand"
 	"testing"
+	"time"
 )
 
 var bytes100 []byte
@@ -127,6 +128,74 @@ func BenchmarkSplitSIMD100(b *testing.B) {
 	}
 }
 
+func BenchmarkSplitSIMD100NoDelay(t *testing.B) {
+	originalData := make([]byte, 100)
+	_, _ = rand.Read(originalData)
+
+	N := 1_000
+	durations := make([]time.Duration, N)
+	sumtime := int64(0)
+
+	for i := 0; i < N; i++ {
+		var results [][]byte
+		startTime := time.Now()
+		results, _ = shamir.Split(originalData, 4, 2)
+		durations[i] = time.Since(startTime)
+		sumtime += durations[i].Nanoseconds()
+		if len(results) == 0 {
+			break
+		}
+	}
+
+	t.Logf("(%d) avg. processing time %vns", len(durations), sumtime/int64(N))
+}
+
+func BenchmarkSplitSIMD100w5msDelay(t *testing.B) {
+	originalData := make([]byte, 100)
+	_, _ = rand.Read(originalData)
+
+	N := 1_000
+	durations := make([]time.Duration, N)
+	sumtime := int64(0)
+
+	for i := 0; i < N; i++ {
+		var results [][]byte
+		startTime := time.Now()
+		results, _ = shamir.Split(originalData, 4, 2)
+		durations[i] = time.Since(startTime)
+		sumtime += durations[i].Nanoseconds()
+		if len(results) == 0 {
+			break
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+
+	t.Logf("(%d) avg. processing time %vns", len(durations), sumtime/int64(N))
+}
+
+func BenchmarkSplitSIMD100w10msDelay(t *testing.B) {
+	originalData := make([]byte, 100)
+	_, _ = rand.Read(originalData)
+
+	N := 1_000
+	durations := make([]time.Duration, N)
+	sumtime := int64(0)
+
+	for i := 0; i < N; i++ {
+		var results [][]byte
+		startTime := time.Now()
+		results, _ = shamir.Split(originalData, 4, 2)
+		durations[i] = time.Since(startTime)
+		sumtime += durations[i].Nanoseconds()
+		if len(results) == 0 {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	t.Logf("(%d) avg. processing time %vns", len(durations), sumtime/int64(N))
+}
+
 func BenchmarkSplitBase1K(b *testing.B) {
 	b.SetBytes(int64(len(bytes1k)))
 	b.ResetTimer()
@@ -209,6 +278,74 @@ func BenchmarkSplitKrawczyk100(b *testing.B) {
 			break
 		}
 	}
+}
+
+func BenchmarkSplitKrawczyk100NoDelay(t *testing.B) {
+	originalData := make([]byte, 100)
+	_, _ = rand.Read(originalData)
+
+	N := 1_000
+	durations := make([]time.Duration, N)
+	sumtime := int64(0)
+
+	for i := 0; i < N; i++ {
+		var results [][]byte
+		startTime := time.Now()
+		results, _ = krawczyk.Split(originalData, 4, 2)
+		durations[i] = time.Since(startTime)
+		sumtime += durations[i].Nanoseconds()
+		if len(results) == 0 {
+			break
+		}
+	}
+
+	t.Logf("(%d) avg. processing time %vns", len(durations), sumtime/int64(N))
+}
+
+func BenchmarkSplitKrawczyk100w5msDelay(t *testing.B) {
+	originalData := make([]byte, 100)
+	_, _ = rand.Read(originalData)
+
+	N := 1_000
+	durations := make([]time.Duration, N)
+	sumtime := int64(0)
+
+	for i := 0; i < N; i++ {
+		var results [][]byte
+		startTime := time.Now()
+		results, _ = shamir.Split(originalData, 4, 2)
+		durations[i] = time.Since(startTime)
+		sumtime += durations[i].Nanoseconds()
+		if len(results) == 0 {
+			break
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+
+	t.Logf("(%d) avg. processing time %vns", len(durations), sumtime/int64(N))
+}
+
+func BenchmarkSplitKrawczyk100w10msDelay(t *testing.B) {
+	originalData := make([]byte, 100)
+	_, _ = rand.Read(originalData)
+
+	N := 1_000
+	durations := make([]time.Duration, N)
+	sumtime := int64(0)
+
+	for i := 0; i < N; i++ {
+		var results [][]byte
+		startTime := time.Now()
+		results, _ = shamir.Split(originalData, 4, 2)
+		durations[i] = time.Since(startTime)
+		sumtime += durations[i].Nanoseconds()
+		if len(results) == 0 {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	t.Logf("(%d) avg. processing time %vns", len(durations), sumtime/int64(N))
 }
 
 func BenchmarkSplitKrawczyk1K(b *testing.B) {

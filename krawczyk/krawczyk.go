@@ -33,7 +33,17 @@ func Split(secret []byte, parts, threshold int) ([][]byte, error) {
 			"#parts and #threshold should be less than 256, #parts=%d $threshold=%d", parts, threshold)
 	}
 
-	// TODO: handle if parts-threshold=0 => making data parts = 0 that cause error in reed-solomon
+	// if N == K, use shamir's secret sharing instead to avoid additional storage.
+	if parts == threshold {
+		return shamir.Split(secret, parts, threshold)
+	}
+
+	// handle if parts-threshold=0 => making data parts = 0 that cause error in reed-solomon
+	// we make data parts = 1 in this case
+	originalParts := parts
+	if parts-threshold == 0 {
+		parts += 1
+	}
 
 	// generate random key
 	key := make([]byte, LenKey)
@@ -60,9 +70,16 @@ func Split(secret []byte, parts, threshold int) ([][]byte, error) {
 	if err := encoder.Encode(encodedSecret); err != nil {
 		return nil, fmt.Errorf("failed to encode the secret: %v", err)
 	}
-	// append idx in the encoded data
+	// append part-id in the encoded data
 	for i := 0; i < len(encodedSecret); i++ {
 		encodedSecret[i] = append(encodedSecret[i], byte(i))
+	}
+
+	// handle if parts-threshold == 0, previously we add one temporary part
+	// for erasure coding, we need to remove it now
+	if originalParts != parts {
+		encodedSecret = encodedSecret[:len(encodedSecret)-1]
+		parts = originalParts
 	}
 
 	// secret-share the key & len with shamir's secret-sharing
@@ -81,15 +98,8 @@ func Split(secret []byte, parts, threshold int) ([][]byte, error) {
 	lenEncodedMetadata := len(ssKeyLenPair[0])
 	results := newByteMatrix(parts, lenEncodedSecret+lenEncodedMetadata)
 	for i := 0; i < parts; i++ {
-		j := 0
-		for j < lenEncodedMetadata {
-			results[i][j] = ssKeyLenPair[i][j]
-			j += 1
-		}
-		for j < lenEncodedMetadata+lenEncodedSecret {
-			results[i][j] = encodedSecret[i][j-lenEncodedMetadata]
-			j += 1
-		}
+		copy(results[i][0:lenEncodedMetadata], ssKeyLenPair[i])
+		copy(results[i][lenEncodedMetadata:], encodedSecret[i])
 	}
 
 	return results, nil
@@ -123,15 +133,35 @@ func Combine(ssData [][]byte, parts, threshold int) ([]byte, error) {
 			"#parts and #threshold should be less than 256, #parts=%d $threshold=%d", parts, threshold)
 	}
 
-	// remove empty shares
-	cleanSSData := make([][]byte, 0)
-	for i := 0; i < len(ssData); i++ {
-		if ssData[i] == nil {
-			continue
-		}
-		cleanSSData = append(cleanSSData, ssData[i])
+	// if N == K, use shamir's secret sharing instead to avoid additional storage.
+	if parts == threshold {
+		return shamir.Combine(ssData)
 	}
-	ssData = cleanSSData
+
+	// remove empty shares
+	numCleanParts := 0
+	for i := 0; i < len(ssData); i++ {
+		if ssData[i] != nil {
+			numCleanParts++
+		}
+	}
+	if numCleanParts != len(ssData) {
+		cleanSSData := make([][]byte, numCleanParts)
+		j := 0
+		for i := 0; i < len(ssData); i++ {
+			if ssData[i] == nil {
+				continue
+			}
+			cleanSSData[j] = ssData[i]
+			j++
+		}
+		ssData = cleanSSData
+	}
+
+	// handle if parts-threshold == 0 which require additional temporary part
+	if parts-threshold == 0 {
+		parts += 1
+	}
 
 	// split encoded data and secret-shared metadata
 	secretStartIdx := LenKey + LenLen + 1
@@ -139,8 +169,11 @@ func Combine(ssData [][]byte, parts, threshold int) ([]byte, error) {
 	ssMetadata := make([][]byte, len(ssData))
 	for i := 0; i < len(ssData); i++ {
 		ssMetadata[i] = ssData[i][:secretStartIdx]
-		if ssData[i][len(ssData[i])-1] >= byte(parts) {
-			continue
+
+		// check the part-id of the reed-solomon encoded data
+		partID := ssData[i][len(ssData[i])-1]
+		if partID > byte(parts) {
+			return nil, errors.New("the given secret-shared data is wrong, part-id should be less than the number of parts")
 		}
 		encodedData[ssData[i][len(ssData[i])-1]] = ssData[i][secretStartIdx : len(ssData[i])-1]
 	}

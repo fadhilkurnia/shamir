@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/fadhilkurnia/shamir/shamir"
 	"github.com/klauspost/reedsolomon"
+	"math"
 	"math/rand"
 )
 
@@ -17,9 +18,9 @@ const LenKey = 24
 const LenLen = 2
 
 func Split(secret []byte, parts, threshold int) ([][]byte, error) {
-	if len(secret) > 65536 {
+	if len(secret) > math.MaxUint16 {
 		return nil, fmt.Errorf(
-			"the provided secret is to large, we can only split up to %d bytes data", 65536)
+			"the provided secret is to large, we can only split up to %d bytes data", math.MaxUint16)
 	}
 	if threshold == 0 || parts == 0 {
 		return nil, errors.New("#parts and #threshold can not be zero")
@@ -117,9 +118,9 @@ func newByteMatrix(r, c int) [][]byte {
 }
 
 func Combine(ssData [][]byte, parts, threshold int) ([]byte, error) {
-	if len(ssData[0]) > 65536 {
+	if len(ssData[0]) > math.MaxUint16 {
 		return nil, fmt.Errorf(
-			"the provided secret is to large, we can only combine up to %d bytes data", 65536)
+			"the provided secret is to large, we can only combine up to %d bytes data", math.MaxUint16)
 	}
 	if threshold == 0 || parts == 0 {
 		return nil, errors.New("#parts and #threshold can not be zero")

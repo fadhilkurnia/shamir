@@ -295,6 +295,15 @@ func BenchmarkSplitSIMD1M(b *testing.B) {
 	}
 }
 
+func BenchmarkSplitCombineSIMD1M(b *testing.B) {
+	b.SetBytes(int64(len(bytes1M)))
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		ss, _ := shamir.Split(bytes1M, 4, 2)
+		_, _ = shamir.Combine(ss)
+	}
+}
+
 func BenchmarkSplitKrawczyk100(b *testing.B) {
 	b.SetBytes(int64(len(bytes100)))
 	b.ResetTimer()
@@ -388,5 +397,14 @@ func BenchmarkSplitKrawczyk10K(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_, _ = krawczyk.Split(bytes10k, 4, 2)
+	}
+}
+
+func BenchmarkSplitCombineKrawczyk10K(b *testing.B) {
+	b.SetBytes(int64(len(bytes10k)))
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		ss, _ := krawczyk.Split(bytes10k, 4, 2)
+		_, _ = krawczyk.Combine(ss, 4, 2)
 	}
 }

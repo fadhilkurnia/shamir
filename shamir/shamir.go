@@ -3,9 +3,8 @@ package shamir
 import (
 	"fmt"
 	"log"
-	mathrand "math/rand"
+	"math/rand"
 	"sync"
-	"time"
 )
 
 const (
@@ -39,9 +38,7 @@ func Split(secret []byte, parts, threshold int) ([][]byte, error) {
 	}
 
 	// Generate random list of x coordinates
-	r := mathrand.New(mathrand.NewSource(time.Now().UnixNano()))
-	mathrand.Seed(time.Now().UnixNano())
-	xCoordinates := r.Perm(255)
+	xCoordinates := rand.Perm(255)
 
 	// Allocate the output array, initialize the final byte
 	// of the output with the offset. The representation of each
@@ -93,8 +90,7 @@ func SplitGeneric(secret []byte, parts, threshold int) ([][]byte, error) {
 	}
 
 	// Generate random list of x coordinates
-	mathrand.Seed(time.Now().UnixNano())
-	xCoordinates := mathrand.Perm(255)
+	xCoordinates := rand.Perm(255)
 
 	// Allocate the output array, initialize the final byte
 	// of the output with the offset. The representation of each
@@ -146,8 +142,7 @@ func SplitP(secret []byte, parts, threshold int) ([][]byte, error) {
 	}
 
 	// Generate random list of x coordinates
-	mathrand.Seed(time.Now().UnixNano())
-	xCoordinates := mathrand.Perm(255)
+	xCoordinates := rand.Perm(255)
 
 	// Allocate the output array, initialize the final byte
 	// of the output with the offset. The representation of each

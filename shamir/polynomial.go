@@ -1,21 +1,18 @@
 package shamir
 
 import (
-	"crypto/rand"
 	"crypto/subtle"
 	gf "github.com/fadhilkurnia/shamir/galois"
-	mathrand "math/rand"
-	"time"
+	"math/rand"
 )
 
 func makePolynomials(intercepts []uint8, degree int) ([][]uint8, error) {
 	N := len(intercepts)
-	polynomials := newMatrix(N, N)
+	polynomials := newMatrix(N, degree+1)
 	coefficients := make([]byte, degree*N)
 
 	// Assign random co-efficients to all the N polynomials
-	r := mathrand.New(mathrand.NewSource(time.Now().UnixNano()))
-	if _, err := r.Read(coefficients); err != nil {
+	if _, err := rand.Read(coefficients); err != nil {
 		return nil, err
 	}
 
@@ -32,7 +29,7 @@ func makePolynomials(intercepts []uint8, degree int) ([][]uint8, error) {
 func transpose(slice [][]uint8) [][]uint8 {
 	xl := len(slice[0])
 	yl := len(slice)
-	result := newMatrix(yl, xl)
+	result := newMatrix(xl, yl)
 	for i := 0; i < xl; i++ {
 		for j := 0; j < yl; j++ {
 			result[i][j] = slice[j][i]

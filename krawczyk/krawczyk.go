@@ -8,7 +8,6 @@ import (
 	"github.com/fadhilkurnia/shamir/shamir"
 	"github.com/klauspost/reedsolomon"
 	"math/rand"
-	"time"
 )
 
 // key size: 16 bytes (128 bit)
@@ -38,8 +37,7 @@ func Split(secret []byte, parts, threshold int) ([][]byte, error) {
 
 	// generate random key
 	key := make([]byte, LenKey)
-	r := rand.New(rand.NewSource(time.Now().UnixNano()))
-	_, err := r.Read(key)
+	_, err := rand.Read(key)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate secret key: %v", err)
 	}
@@ -63,7 +61,7 @@ func Split(secret []byte, parts, threshold int) ([][]byte, error) {
 		return nil, fmt.Errorf("failed to encode the secret: %v", err)
 	}
 	// append idx in the encoded data
-	for i:=0; i < len(encodedSecret); i++ {
+	for i := 0; i < len(encodedSecret); i++ {
 		encodedSecret[i] = append(encodedSecret[i], byte(i))
 	}
 
@@ -144,7 +142,7 @@ func Combine(ssData [][]byte, parts, threshold int) ([]byte, error) {
 		if ssData[i][len(ssData[i])-1] >= byte(parts) {
 			continue
 		}
-		encodedData[ssData[i][len(ssData[i])-1]] = ssData[i][secretStartIdx:len(ssData[i])-1]
+		encodedData[ssData[i][len(ssData[i])-1]] = ssData[i][secretStartIdx : len(ssData[i])-1]
 	}
 
 	// get the metadata

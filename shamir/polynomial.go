@@ -5,17 +5,15 @@ import (
 	"crypto/subtle"
 	gf "github.com/fadhilkurnia/shamir/galois"
 	mathrand "math/rand"
-	"time"
 )
 
-func makePolynomials(intercepts []uint8, degree int) ([][]uint8, error) {
+func makePolynomials(intercepts []uint8, degree int, randomizer *mathrand.Rand) ([][]uint8, error) {
 	N := len(intercepts)
 	polynomials := newMatrix(N, N)
 	coefficients := make([]byte, degree*N)
 
 	// Assign random co-efficients to all the N polynomials
-	r := mathrand.New(mathrand.NewSource(time.Now().UnixNano()))
-	if _, err := r.Read(coefficients); err != nil {
+	if _, err := randomizer.Read(coefficients); err != nil {
 		return nil, err
 	}
 

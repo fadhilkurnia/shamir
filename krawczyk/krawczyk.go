@@ -73,7 +73,7 @@ func Split(secret []byte, parts, threshold int) ([][]byte, error) {
 	lenSecretBytes := make([]byte, 2)
 	binary.LittleEndian.PutUint16(lenSecretBytes, lenSecret)
 	keyLenPair := append(key, lenSecretBytes...)
-	ssKeyLenPair, err := shamir.Split(keyLenPair, parts, threshold)
+	ssKeyLenPair, err := shamir.SplitWithRandomizer(keyLenPair, parts, threshold, r)
 	if err != nil {
 		return nil, fmt.Errorf("failed to secret-shares the key and len: %v", err)
 	}

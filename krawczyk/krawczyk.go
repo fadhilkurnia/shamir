@@ -2,12 +2,13 @@ package krawczyk
 
 import (
 	"bytes"
-	"crypto/rand"
 	"encoding/binary"
 	"errors"
 	"fmt"
 	"github.com/fadhilkurnia/shamir/shamir"
 	"github.com/klauspost/reedsolomon"
+	"math/rand"
+	"time"
 )
 
 // key size: 16 bytes (128 bit)
@@ -33,9 +34,12 @@ func Split(secret []byte, parts, threshold int) ([][]byte, error) {
 			"#parts and #threshold should be less than 256, #parts=%d $threshold=%d", parts, threshold)
 	}
 
+	// TODO: handle if parts-threshold=0 => making data parts = 0 that cause error in reed-solomon
+
 	// generate random key
 	key := make([]byte, LenKey)
-	_, err := rand.Read(key)
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	_, err := r.Read(key)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate secret key: %v", err)
 	}
@@ -77,9 +81,8 @@ func Split(secret []byte, parts, threshold int) ([][]byte, error) {
 	// combine the encoded data and the metadata share (key & length)
 	lenEncodedSecret := len(encodedSecret[0])
 	lenEncodedMetadata := len(ssKeyLenPair[0])
-	results := make([][]byte, parts)
+	results := newByteMatrix(parts, lenEncodedSecret+lenEncodedMetadata)
 	for i := 0; i < parts; i++ {
-		results[i] = make([]byte, lenEncodedMetadata+lenEncodedSecret)
 		j := 0
 		for j < lenEncodedMetadata {
 			results[i][j] = ssKeyLenPair[i][j]
@@ -92,6 +95,17 @@ func Split(secret []byte, parts, threshold int) ([][]byte, error) {
 	}
 
 	return results, nil
+}
+
+func newByteMatrix(r, c int) [][]byte {
+	a := make([]uint8, r*c)
+	m := make([][]uint8, r)
+	lo, hi := 0, c
+	for i := range m {
+		m[i] = a[lo:hi:hi]
+		lo, hi = hi, hi+c
+	}
+	return m
 }
 
 func Combine(ssData [][]byte, parts, threshold int) ([]byte, error) {

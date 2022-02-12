@@ -132,6 +132,28 @@ func BenchmarkSplitSIMD100NoDelay(t *testing.B) {
 	originalData := make([]byte, 100)
 	_, _ = rand.Read(originalData)
 
+	N := 1000
+	durations := make([]time.Duration, N)
+	sumtime := int64(0)
+
+	for i := 0; i < N; i++ {
+		var results [][]byte
+		startTime := time.Now()
+		results, _ = shamir.Split(originalData, 4, 2)
+		durations[i] = time.Since(startTime)
+		sumtime += durations[i].Nanoseconds()
+		if len(results) == 0 {
+			break
+		}
+	}
+
+	t.Logf("(%d) avg. processing time %vns", len(durations), sumtime/int64(N))
+}
+
+func BenchmarkSplitSIMD100wDelay(t *testing.B) {
+	originalData := make([]byte, 100)
+	_, _ = rand.Read(originalData)
+
 	N := 1_000
 	durations := make([]time.Duration, N)
 	sumtime := int64(0)
@@ -144,6 +166,11 @@ func BenchmarkSplitSIMD100NoDelay(t *testing.B) {
 		sumtime += durations[i].Nanoseconds()
 		if len(results) == 0 {
 			break
+		}
+		for j := 0; j < N*N*N; j++ {
+			if j > N*N*N {
+				break
+			}
 		}
 	}
 

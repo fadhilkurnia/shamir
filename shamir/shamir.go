@@ -39,8 +39,9 @@ func Split(secret []byte, parts, threshold int) ([][]byte, error) {
 	}
 
 	// Generate random list of x coordinates
+	r := mathrand.New(mathrand.NewSource(time.Now().UnixNano()))
 	mathrand.Seed(time.Now().UnixNano())
-	xCoordinates := mathrand.Perm(255)
+	xCoordinates := r.Perm(255)
 
 	// Allocate the output array, initialize the final byte
 	// of the output with the offset. The representation of each

@@ -4,22 +4,25 @@ import (
 	"crypto/rand"
 	"crypto/subtle"
 	gf "github.com/fadhilkurnia/shamir/galois"
+	mathrand "math/rand"
+	"time"
 )
 
 func makePolynomials(intercepts []uint8, degree int) ([][]uint8, error) {
 	N := len(intercepts)
-	polynomials := make([][]uint8, N)
+	polynomials := newMatrix(N, N)
 	coefficients := make([]byte, degree*N)
 
 	// Assign random co-efficients to all the N polynomials
-	if _, err := rand.Read(coefficients); err != nil {
+	r := mathrand.New(mathrand.NewSource(time.Now().UnixNano()))
+	if _, err := r.Read(coefficients); err != nil {
 		return nil, err
 	}
 
 	startIdx := 0
 	for p := 0; p < N; p++ {
-		polynomials[p] = append(polynomials[p], intercepts[p]) 								    // polynomials[p][0] is the intercept
-		polynomials[p] = append(polynomials[p], coefficients[startIdx:startIdx+degree]...)      // polynomials[p][1:] is the other coefficients
+		polynomials[p][0] = intercepts[p]                                // polynomials[p][0] is the intercept
+		copy(polynomials[p][1:], coefficients[startIdx:startIdx+degree]) // polynomials[p][1:] is the other coefficients
 		startIdx += degree
 	}
 
@@ -29,10 +32,7 @@ func makePolynomials(intercepts []uint8, degree int) ([][]uint8, error) {
 func transpose(slice [][]uint8) [][]uint8 {
 	xl := len(slice[0])
 	yl := len(slice)
-	result := make([][]uint8, xl)
-	for i := range result {
-		result[i] = make([]uint8, yl)
-	}
+	result := newMatrix(yl, xl)
 	for i := 0; i < xl; i++ {
 		for j := 0; j < yl; j++ {
 			result[i][j] = slice[j][i]
@@ -41,16 +41,27 @@ func transpose(slice [][]uint8) [][]uint8 {
 	return result
 }
 
+func newMatrix(r, c int) [][]uint8 {
+	a := make([]uint8, r*c)
+	m := make([][]uint8, r)
+	lo, hi := 0, c
+	for i := range m {
+		m[i] = a[lo:hi:hi]
+		lo, hi = hi, hi+c
+	}
+	return m
+}
+
 // evaluatePolynomialsAt assumes x is not 0.
 // coefficients is a ((degree+1)xN) matrix
-func evaluatePolynomialsAt(coefficients [][]uint8, x uint8, out []uint8){
+func evaluatePolynomialsAt(coefficients [][]uint8, x uint8, out []uint8) {
 	N := len(coefficients[0])
-	degree := len(coefficients)-1
+	degree := len(coefficients) - 1
 	result := make([]uint8, N)
 
 	// Compute the value at x in all the N polynomials using Horner's method.
 	copy(result, coefficients[degree])
-	for i := degree-1; i >=0; i-- {
+	for i := degree - 1; i >= 0; i-- {
 		result = gf.AddVector(coefficients[i], gf.MulConstVector(x, result))
 	}
 	copy(out[:N], result)
@@ -58,14 +69,14 @@ func evaluatePolynomialsAt(coefficients [][]uint8, x uint8, out []uint8){
 
 // genericEvaluatePolynomialsAt assumes x is not 0.
 // coefficients is a ((degree+1)xN) matrix
-func genericEvaluatePolynomialsAt(coefficients [][]uint8, x uint8, out []uint8){
+func genericEvaluatePolynomialsAt(coefficients [][]uint8, x uint8, out []uint8) {
 	N := len(coefficients[0])
-	degree := len(coefficients)-1
+	degree := len(coefficients) - 1
 	result := make([]uint8, N)
 
 	// Compute the value at x in all the N polynomials using Horner's method.
 	copy(result, coefficients[degree])
-	for i := degree-1; i >=0; i-- {
+	for i := degree - 1; i >= 0; i-- {
 		result = gf.AddVectorGeneric(coefficients[i], gf.MulConstVectorGeneric(x, result))
 	}
 	copy(out[:N], result)
@@ -95,7 +106,6 @@ func makePolynomial(intercept, degree uint8) (polynomial, error) {
 	return p, nil
 }
 
-
 // add combines two numbers in GF(2^8)
 // This can also be used for subtraction since it is symmetric.
 func add(a, b uint8) uint8 {
@@ -112,7 +122,7 @@ func div(a, b uint8) uint8 {
 
 	log_a := logTable[a]
 	log_b := logTable[b]
-	diff := ((int(log_a) - int(log_b))+255)%255
+	diff := ((int(log_a) - int(log_b)) + 255) % 255
 
 	ret := int(expTable[diff])
 
@@ -137,7 +147,6 @@ func mult(a, b uint8) (out uint8) {
 	return uint8(ret)
 }
 
-
 // evaluate returns the value of the polynomial for the given x
 func (p *polynomial) evaluate(x uint8) uint8 {
 	// Special case the origin
@@ -154,7 +163,6 @@ func (p *polynomial) evaluate(x uint8) uint8 {
 	}
 	return out
 }
-
 
 // interpolatePolynomial takes N sample points and returns
 // the value at a given x using a lagrange interpolation.
@@ -177,4 +185,3 @@ func interpolatePolynomial(x_samples, y_samples []uint8, x uint8) uint8 {
 	}
 	return result
 }
-

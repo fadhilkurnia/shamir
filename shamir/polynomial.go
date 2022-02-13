@@ -26,6 +26,26 @@ func makePolynomials(intercepts []uint8, degree int) ([][]uint8, error) {
 	return polynomials, nil
 }
 
+func makePolynomialsWithRandomizer(intercepts []uint8, degree int, randomizer *rand.Rand) ([][]uint8, error) {
+	N := len(intercepts)
+	polynomials := newMatrix(N, degree+1)
+	coefficients := make([]byte, degree*N)
+
+	// Assign random co-efficients to all the N polynomials
+	if _, err := randomizer.Read(coefficients); err != nil {
+		return nil, err
+	}
+
+	startIdx := 0
+	for p := 0; p < N; p++ {
+		polynomials[p][0] = intercepts[p]                                // polynomials[p][0] is the intercept
+		copy(polynomials[p][1:], coefficients[startIdx:startIdx+degree]) // polynomials[p][1:] is the other coefficients
+		startIdx += degree
+	}
+
+	return polynomials, nil
+}
+
 func transpose(slice [][]uint8) [][]uint8 {
 	xl := len(slice[0])
 	yl := len(slice)

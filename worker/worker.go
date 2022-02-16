@@ -2,10 +2,9 @@ package worker
 
 import (
 	"errors"
+	"github.com/fadhilkurnia/shamir/csprng"
 	"github.com/fadhilkurnia/shamir/krawczyk"
 	"github.com/fadhilkurnia/shamir/shamir"
-	"math/rand"
-	"time"
 )
 
 const AlgShamir = "shamir"
@@ -13,12 +12,12 @@ const AlgSSMS = "krawczyk"
 
 // Worker is a secret-sharing worker with a single randomization source
 type Worker struct {
-	r *rand.Rand
+	r *csprng.CSPRNG
 }
 
 func NewWorker() Worker {
 	return Worker{
-		rand.New(rand.NewSource(time.Now().UnixNano())),
+		csprng.NewCSPRNG(),
 	}
 }
 

@@ -2,6 +2,7 @@ package shamir
 
 import (
 	"fmt"
+	"github.com/fadhilkurnia/shamir/csprng"
 	"log"
 	"math/rand"
 	"sync"
@@ -72,7 +73,7 @@ func Split(secret []byte, parts, threshold int) ([][]byte, error) {
 }
 
 // SplitWithRandomizer is exactly the same with Split but with randomizer provided by the caller
-func SplitWithRandomizer(secret []byte, parts, threshold int, randomizer *rand.Rand) ([][]byte, error) {
+func SplitWithRandomizer(secret []byte, parts, threshold int, randomizer *csprng.CSPRNG) ([][]byte, error) {
 	// Sanity check the input
 	if parts < threshold {
 		return nil, fmt.Errorf("parts cannot be less than threshold")

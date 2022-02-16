@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"github.com/fadhilkurnia/shamir/csprng"
 	"github.com/fadhilkurnia/shamir/shamir"
 	"github.com/klauspost/reedsolomon"
 	"math"
@@ -107,7 +108,7 @@ func Split(secret []byte, parts, threshold int) ([][]byte, error) {
 }
 
 // SplitWithRandomizer is exactly the same with Split but with randomizer provided by the caller
-func SplitWithRandomizer(secret []byte, parts, threshold int, randomizer *rand.Rand) ([][]byte, error) {
+func SplitWithRandomizer(secret []byte, parts, threshold int, randomizer *csprng.CSPRNG) ([][]byte, error) {
 	if len(secret) > math.MaxUint16 {
 		return nil, fmt.Errorf(
 			"the provided secret is to large, we can only split up to %d bytes data", math.MaxUint16)

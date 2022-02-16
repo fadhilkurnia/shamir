@@ -2,6 +2,7 @@ package shamir
 
 import (
 	"crypto/subtle"
+	"github.com/fadhilkurnia/shamir/csprng"
 	gf "github.com/fadhilkurnia/shamir/galois"
 	"math/rand"
 )
@@ -26,7 +27,7 @@ func makePolynomials(intercepts []uint8, degree int) ([][]uint8, error) {
 	return polynomials, nil
 }
 
-func makePolynomialsWithRandomizer(intercepts []uint8, degree int, randomizer *rand.Rand) ([][]uint8, error) {
+func makePolynomialsWithRandomizer(intercepts []uint8, degree int, randomizer *csprng.CSPRNG) ([][]uint8, error) {
 	N := len(intercepts)
 	polynomials := newMatrix(N, degree+1)
 	coefficients := make([]byte, degree*N)

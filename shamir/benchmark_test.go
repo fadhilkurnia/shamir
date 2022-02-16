@@ -1,9 +1,8 @@
 package shamir
 
 import (
-	crand "crypto/rand"
+	"github.com/fadhilkurnia/shamir/csprng"
 	"math/rand"
-	"runtime"
 	"testing"
 )
 
@@ -11,89 +10,35 @@ import (
 // func BenchmarkMakePolynomials()
 // func BenchmarkEvaluatePolynomialsAt()
 
-func BenchmarkBaseline(b *testing.B) {
-	numWorker := runtime.GOMAXPROCS(-1)
-	workAmount := 100_000
-	b.SetBytes(int64(workAmount) * int64(numWorker) * 8)
+var bytes100 []byte
+var bytes1k []byte
+var bytes10k []byte
+var bytes1M []byte
+
+func init() {
+	bytes100 = make([]byte, 100)
+	bytes1k = make([]byte, 1_000)
+	bytes10k = make([]byte, 10_000)
+	bytes1M = make([]byte, 1024*1024)
+	rand.Read(bytes100)
+	rand.Read(bytes1k)
+	rand.Read(bytes10k)
+	rand.Read(bytes1M)
+}
+
+func BenchmarkSplit(b *testing.B) {
+	b.SetBytes(int64(len(bytes1M)))
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		c := make(chan int64)
-		res := make(chan int64)
-
-		// spawning workers, they are waiting for job
-		for j := 0; j < numWorker; j++ {
-			go func() {
-				// wait for input
-				input := <- c
-
-				// do some busy works
-				x := make([]int64, workAmount)
-				for k := 0; k < len(x)-1; k++ {
-					x[k] = input + x[k+1]
-				}
-				res <- x[len(x)-1]
-			}()
-		}
-
-		// send job to worker
-		for j := 0; j < numWorker; j++ {
-			c <- 123
-		}
-
-		// consume for the results
-		for j := 0; j < numWorker; j++ {
-			<- res
-		}
+		_, _ = Split(bytes1M, 4, 2)
 	}
 }
 
-
-func BenchmarkRandom(b *testing.B) {
-	numWorker := runtime.GOMAXPROCS(-1)
-	workAmount := 100_000
-	b.SetBytes(int64(workAmount) * int64(numWorker))
+func BenchmarkSplitWithRandomizer(b *testing.B) {
+	r := csprng.NewCSPRNG()
+	b.SetBytes(int64(len(bytes1M)))
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		c := make(chan byte, 1)
-
-		// spawning workers
-		for j := 0; j < numWorker; j++ {
-			go func(input int64, c chan byte) {
-				// do some busy works, spinning the core.
-				x := make([]byte, workAmount)
-				rand.Read(x)
-				c <- x[len(x)-1]
-			}(rand.Int63(), c)
-		}
-
-		// consuming results
-		for j := 0; j < numWorker; j++ {
-			<- c
-		}
-	}
-}
-
-func BenchmarkRandomCrypto(b *testing.B) {
-	numWorker := runtime.GOMAXPROCS(-1)
-	b.SetBytes(1_000 * int64(numWorker))
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		c := make(chan byte, 1)
-
-		// spawning workers
-		for j := 0; j < numWorker; j++ {
-			go func(input int64, c chan byte) {
-
-				// do some busy works
-				x := make([]byte, 1_000)
-				crand.Read(x)
-				c <- x[len(x)-1]
-			}(rand.Int63(), c)
-		}
-
-		// consuming results
-		for j := 0; j < numWorker; j++ {
-			<- c
-		}
+		_, _ = SplitWithRandomizer(bytes1M, 4, 2, r)
 	}
 }

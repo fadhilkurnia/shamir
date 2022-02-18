@@ -34,9 +34,20 @@ func BenchmarkSplit(b *testing.B) {
 	}
 }
 
+func BenchmarkSplitWithOldRandomizer(b *testing.B) {
+	r := csprng.NewCSPRNG()
+	b.SetBytes(int64(len(bytes1M)))
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, _ = SplitWithRandomizerOld(bytes1M, 4, 2, r)
+	}
+}
+
 func BenchmarkSplitWithRandomizer(b *testing.B) {
 	r := csprng.NewCSPRNG()
 	b.SetBytes(int64(len(bytes1M)))
+	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_, _ = SplitWithRandomizer(bytes1M, 4, 2, r)

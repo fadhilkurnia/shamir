@@ -72,8 +72,8 @@ func Split(secret []byte, parts, threshold int) ([][]byte, error) {
 	return out, nil
 }
 
-// SplitWithRandomizer is exactly the same with Split but with randomizer provided by the caller
-func SplitWithRandomizer(secret []byte, parts, threshold int, randomizer *csprng.CSPRNG) ([][]byte, error) {
+// SplitWithRandomizerOld is exactly the same with Split but with randomizer provided by the caller
+func SplitWithRandomizerOld(secret []byte, parts, threshold int, randomizer *csprng.CSPRNG) ([][]byte, error) {
 	// Sanity check the input
 	if parts < threshold {
 		return nil, fmt.Errorf("parts cannot be less than threshold")
@@ -124,6 +124,59 @@ func SplitWithRandomizer(secret []byte, parts, threshold int, randomizer *csprng
 	// Return the encoded secrets
 	return out, nil
 }
+
+func SplitWithRandomizer(secret []byte, parts, threshold int, randomizer *csprng.CSPRNG) ([][]byte, error) {
+	// Sanity check the input
+	if parts < threshold {
+		return nil, fmt.Errorf("parts cannot be less than threshold")
+	}
+	if parts > 255 {
+		return nil, fmt.Errorf("parts cannot exceed 255")
+	}
+	if threshold < 2 {
+		return nil, fmt.Errorf("threshold must be at least 2")
+	}
+	if threshold > 255 {
+		return nil, fmt.Errorf("threshold cannot exceed 255")
+	}
+	if len(secret) == 0 {
+		return nil, fmt.Errorf("cannot split an empty secret")
+	}
+
+	// Generate random list of x coordinates
+	xCoordinates := randomizer.GetUniqueBytes(byte(parts))
+
+	// Allocate the output array, initialize the final byte
+	// of the output with the offset. The representation of each
+	// output is {y1, y2, .., yN, x}.
+	// part1: {y1, y2, .., yN, x}
+	// part2: {y1, y2, .., yN, x}
+	// ...
+	// partN: {y1, y2, .., yN, x}
+	out := make([][]byte, parts)
+	for idx := range out {
+		out[idx] = make([]byte, len(secret)+1)
+		out[idx][len(secret)] = uint8(xCoordinates[idx]) + 1
+	}
+
+	// Construct a random polynomial for N bytes of the secret.
+	// Because we are using a field of size 256, we can only represent
+	// a single byte as the intercept of the polynomial, so we must
+	// use a new polynomial for each byte.
+	// polynomials is a matrix with (N x degree) dimension
+	polynomials, err := makePolynomialsWithRandomizer(secret, threshold-1, randomizer)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate polynomial: %v", err)
+	}
+	coefficients := transpose(polynomials)
+	for i := 0; i < parts; i++ {
+		evaluatePolynomialsAt(coefficients, uint8(xCoordinates[i])+1, out[i])
+	}
+
+	// Return the encoded secrets
+	return out, nil
+}
+
 
 func SplitGeneric(secret []byte, parts, threshold int) ([][]byte, error) {
 	// Sanity check the input

@@ -111,6 +111,28 @@ func TestSplitCombine2(t *testing.T) {
 	}
 }
 
+func TestSplitCombine3(t *testing.T) {
+	secretMsg := []byte("The quick brown fox jumps over the lazy dog.")
+	parts := 2
+	threshold := 2
+
+	shares, err := Split(secretMsg, parts, threshold)
+	if err != nil {
+		fmt.Printf("failed to split the message: %v", err)
+	}
+	combinedShares, err := Combine(shares, parts, threshold)
+	if err != nil {
+		fmt.Printf("failed to combine the message: %v", err)
+	}
+
+	t.Logf("original len: %d, encoded len: %d", len(secretMsg), len(shares[0]))
+
+	isEqual := reflect.DeepEqual(secretMsg, combinedShares)
+	if !isEqual {
+		t.Errorf("The combined secret is different. Expected: '%v', but got '%v'.\n", string(secretMsg), string(combinedShares))
+	}
+}
+
 func TestSplitCombineZeroK(t *testing.T) {
 	secretMsg := []byte("The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog.")
 

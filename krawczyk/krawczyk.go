@@ -35,18 +35,6 @@ func Split(secret []byte, parts, threshold int) ([][]byte, error) {
 			"#parts and #threshold should be less than 256, #parts=%d $threshold=%d", parts, threshold)
 	}
 
-	// if N == K, use shamir's secret sharing instead to avoid additional storage.
-	if parts == threshold {
-		return shamir.Split(secret, parts, threshold)
-	}
-
-	// handle if parts-threshold=0 => making data parts = 0 that cause error in reed-solomon
-	// we make data parts = 1 in this case
-	originalParts := parts
-	if parts-threshold == 0 {
-		parts += 1
-	}
-
 	// generate random key
 	key := make([]byte, LenKey)
 	_, err := rand.Read(key)
@@ -75,13 +63,6 @@ func Split(secret []byte, parts, threshold int) ([][]byte, error) {
 	// append part-id in the encoded data
 	for i := 0; i < len(encodedSecret); i++ {
 		encodedSecret[i] = append(encodedSecret[i], byte(i))
-	}
-
-	// handle if parts-threshold == 0, previously we add one temporary part
-	// for erasure coding, we need to remove it now
-	if originalParts != parts {
-		encodedSecret = encodedSecret[:len(encodedSecret)-1]
-		parts = originalParts
 	}
 
 	// secret-share the key & len with shamir's secret-sharing
@@ -125,18 +106,6 @@ func SplitWithRandomizer(secret []byte, parts, threshold int, randomizer *csprng
 			"#parts and #threshold should be less than 256, #parts=%d $threshold=%d", parts, threshold)
 	}
 
-	// if N == K, use shamir's secret sharing instead to avoid additional storage.
-	if parts == threshold {
-		return shamir.SplitWithRandomizer(secret, parts, threshold, randomizer)
-	}
-
-	// handle if parts-threshold=0 => making data parts = 0 that cause error in reed-solomon
-	// we make data parts = 1 in this case
-	originalParts := parts
-	if parts-threshold == 0 {
-		parts += 1
-	}
-
 	// generate random key
 	key := make([]byte, LenKey)
 	_, err := randomizer.Read(key)
@@ -165,13 +134,6 @@ func SplitWithRandomizer(secret []byte, parts, threshold int, randomizer *csprng
 	// append part-id in the encoded data (1 byte)
 	for i := 0; i < len(encodedSecret); i++ {
 		encodedSecret[i] = append(encodedSecret[i], byte(i))
-	}
-
-	// handle if parts-threshold == 0, previously we add one temporary part
-	// for erasure coding, we need to remove it now
-	if originalParts != parts {
-		encodedSecret = encodedSecret[:len(encodedSecret)-1]
-		parts = originalParts
 	}
 
 	// secret-share the key & len with shamir's secret-sharing
@@ -226,11 +188,6 @@ func Combine(ssData [][]byte, parts, threshold int) ([]byte, error) {
 			"#parts and #threshold should be less than 256, #parts=%d $threshold=%d", parts, threshold)
 	}
 
-	// if N == K, use shamir's secret sharing instead to avoid additional storage.
-	if parts == threshold {
-		return shamir.Combine(ssData)
-	}
-
 	// remove empty shares
 	numCleanParts := 0
 	for i := 0; i < len(ssData); i++ {
@@ -249,11 +206,6 @@ func Combine(ssData [][]byte, parts, threshold int) ([]byte, error) {
 			j++
 		}
 		ssData = cleanSSData
-	}
-
-	// handle if parts-threshold == 0 which require additional temporary part
-	if parts-threshold == 0 {
-		parts += 1
 	}
 
 	// split encoded data and secret-shared metadata

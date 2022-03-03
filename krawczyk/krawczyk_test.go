@@ -31,14 +31,44 @@ func TestEncryptDecrypt(t *testing.T) {
 	}
 }
 
-func TestSplitCombine(t *testing.T) {
-	secretMsg := []byte("The quick brown fox jumps over the lazy dog.")
+func TestReedSolomonSplit(t *testing.T) {
+	rawData := []byte("The quick brown fox jumps over the lazy dog.xxxxxx")
+	parts := 5
+	threshold := 2
 
-	shares, err := Split(secretMsg, 4, 2)
+	encoder, err := reedsolomon.New(threshold, parts-threshold)
+	if err != nil {
+		t.Error(err)
+	}
+	encodedSecret, err := encoder.Split(rawData)
+	if err != nil {
+		t.Error(err)
+	}
+	if err := encoder.Encode(encodedSecret); err != nil {
+		t.Error(err)
+	}
+
+	t.Logf("original len: %d, encoded len: %d", len(rawData), len(encodedSecret[0]))
+
+	encodedSecret[0] = nil
+	encodedSecret[1] = nil
+	encodedSecret[4] = nil
+	err = encoder.ReconstructData(encodedSecret)
+	if err != nil {
+		t.Error(err)
+	}
+}
+
+func TestSplitCombine(t *testing.T) {
+	secretMsg := []byte("01234567891234567890012345678909876543210987654321")
+	parts := 5
+	threshold := 2
+
+	shares, err := Split(secretMsg, parts, threshold)
 	if err != nil {
 		fmt.Printf("failed to split the message: %v", err)
 	}
-	combinedShares, err := Combine(shares[2:], 4, 2)
+	combinedShares, err := Combine(shares[:threshold], parts, threshold)
 	if err != nil {
 		fmt.Printf("failed to combine the message: %v", err)
 	}
@@ -49,18 +79,26 @@ func TestSplitCombine(t *testing.T) {
 	if !isEqual {
 		t.Errorf("The combined secret is different. Expected: '%v', but got '%v'.\n", string(secretMsg), string(combinedShares))
 	}
+	expectedLen := len(secretMsg)/(threshold) + 1 + 16 + 2 + 1 // 1 byte partID, 16 bytes key, 2 bytes length, 1 bytes ss metadata
+	if len(secretMsg) % (threshold) != 0 {
+		expectedLen += 1
+	}
+	if len(shares[0]) != expectedLen {
+		t.Errorf("the expected length of a single share is %d, but got %d", expectedLen, len(shares[0]))
+	}
 }
 
 func TestSplitCombine2(t *testing.T) {
 	secretMsg := []byte("The quick brown fox jumps over the lazy dog.")
 
-	shares, err := Split(secretMsg, 4, 2)
+	shares, err := Split(secretMsg, 5, 2)
 	if err != nil {
 		fmt.Printf("failed to split the message: %v", err)
 	}
 	shares[1] = nil
 	shares[3] = nil
-	combinedShares, err := Combine(shares, 4, 2)
+	shares[4] = nil
+	combinedShares, err := Combine(shares, 5, 2)
 	if err != nil {
 		fmt.Printf("failed to combine the message: %v", err)
 	}
@@ -93,7 +131,7 @@ func TestSplitCombineZeroK(t *testing.T) {
 	}
 }
 
-func TestReedSolomonSplit(t *testing.T) {
+func TestReedSolomonSplit2(t *testing.T) {
 	originalText := []byte("The quick brown fox jumps over the lazy dog")
 	enc, _ := reedsolomon.New(2, 2)
 	encoded, _ := enc.Split(originalText)

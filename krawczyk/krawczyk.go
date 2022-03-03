@@ -15,7 +15,7 @@ import (
 // key size: 16 bytes (128 bit)
 // data len type: uint16 (2 bytes), support up to 65 KB secret data
 
-const LenKey = 24
+const LenKey = 16
 const LenLen = 2
 
 func Split(secret []byte, parts, threshold int) ([][]byte, error) {
@@ -61,7 +61,7 @@ func Split(secret []byte, parts, threshold int) ([][]byte, error) {
 	}
 
 	// encode the encrypted secret (ciphertext) with reed-solomon
-	encoder, err := reedsolomon.New(parts-threshold, threshold)
+	encoder, err := reedsolomon.New(threshold, parts-threshold)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize reed-solomon encoder: %v", err)
 	}
@@ -151,7 +151,7 @@ func SplitWithRandomizer(secret []byte, parts, threshold int, randomizer *csprng
 	}
 
 	// encode the encrypted secret (ciphertext) with reed-solomon
-	encoder, err := reedsolomon.New(parts-threshold, threshold)
+	encoder, err := reedsolomon.New(threshold, parts-threshold)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize reed-solomon encoder: %v", err)
 	}
@@ -162,7 +162,7 @@ func SplitWithRandomizer(secret []byte, parts, threshold int, randomizer *csprng
 	if err := encoder.Encode(encodedSecret); err != nil {
 		return nil, fmt.Errorf("failed to encode the secret: %v", err)
 	}
-	// append part-id in the encoded data
+	// append part-id in the encoded data (1 byte)
 	for i := 0; i < len(encodedSecret); i++ {
 		encodedSecret[i] = append(encodedSecret[i], byte(i))
 	}
@@ -176,6 +176,7 @@ func SplitWithRandomizer(secret []byte, parts, threshold int, randomizer *csprng
 
 	// secret-share the key & len with shamir's secret-sharing
 	// the resulting metadata share, each is 16 bytes (key) + 2 bytes (length) + 1 bytes (ss metadata) = 19 bytes
+	// note that there is also 1 byte part-id, so the total metadata is 20 bytes (fixed).
 	lenSecret := uint16(len(encryptedSecret))
 	lenSecretBytes := make([]byte, 2)
 	binary.LittleEndian.PutUint16(lenSecretBytes, lenSecret)
@@ -280,7 +281,7 @@ func Combine(ssData [][]byte, parts, threshold int) ([]byte, error) {
 	length := binary.LittleEndian.Uint16(metadata[LenKey:])
 
 	// decode the ciphertext
-	decoder, err := reedsolomon.New(parts-threshold, threshold)
+	decoder, err := reedsolomon.New(threshold, parts-threshold)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize reed-solomon decoder: %v", err)
 	}

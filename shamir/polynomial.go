@@ -1,11 +1,42 @@
 package shamir
 
 import (
+	"bytes"
 	"crypto/subtle"
 	"github.com/fadhilkurnia/shamir/csprng"
 	gf "github.com/fadhilkurnia/shamir/galois"
 	"math/rand"
+	"sync"
 )
+
+var polynomialBufferPool sync.Pool
+
+func init() {
+	polynomialBufferPool = sync.Pool{
+		New: func() interface{} {
+			return bytes.Buffer{}
+		},
+	}
+}
+
+func makePolynomialsWithBuff(intercepts []uint8, degree int, buffer []uint8) ([]uint8, error) {
+	N := len(intercepts)
+
+	// assign random coefficients for all the N polynomials
+	_, _ = rand.Read(buffer)
+
+	for p := 0; p < N; p++ {
+		s := (degree+1)*p
+		e := s + degree+1
+
+		// polynomials[p][0] is the intercept
+		// polynomials[p][1:] is the other coefficients that we fill with random
+		polynomialP := buffer[s:e]
+		polynomialP[0] = intercepts[p]
+	}
+
+	return buffer, nil
+}
 
 func makePolynomials(intercepts []uint8, degree int) ([][]uint8, error) {
 	N := len(intercepts)
@@ -29,19 +60,20 @@ func makePolynomials(intercepts []uint8, degree int) ([][]uint8, error) {
 
 func makePolynomialsWithRandomizer(intercepts []uint8, degree int, randomizer *csprng.CSPRNG) ([][]uint8, error) {
 	N := len(intercepts)
-	polynomials := newMatrix(N, degree+1)
-	coefficients := make([]byte, degree*N)
+	polynomials := make([][]byte, N)
+	coefficients := make([]byte, (degree+1)*N)
 
 	// Assign random co-efficients to all the N polynomials
 	if _, err := randomizer.Read(coefficients); err != nil {
 		return nil, err
 	}
 
-	startIdx := 0
 	for p := 0; p < N; p++ {
-		polynomials[p][0] = intercepts[p]                                // polynomials[p][0] is the intercept
-		copy(polynomials[p][1:], coefficients[startIdx:startIdx+degree]) // polynomials[p][1:] is the other coefficients
-		startIdx += degree
+		s := (degree+1)*p
+		e := s + degree+1
+
+		polynomials[p] = coefficients[s:e]	// polynomials[p][1:] is the other coefficients
+		polynomials[p][0] = intercepts[p]   // polynomials[p][0] is the intercept
 	}
 
 	return polynomials, nil
@@ -57,6 +89,20 @@ func transpose(slice [][]uint8) [][]uint8 {
 		}
 	}
 	return result
+}
+
+func transposeMatrixBuffer(dest, source []uint8, rowLen int) {
+	colLen := len(source)/rowLen
+	curSourceCol := 0
+	curSourceRow := 0
+	for i := 0; i < len(source); i++ {
+		dest[i] = source[rowLen*curSourceRow + curSourceCol]
+		curSourceRow++
+		if curSourceRow == colLen {
+			curSourceRow = 0
+			curSourceCol++
+		}
+	}
 }
 
 func newMatrix(r, c int) [][]uint8 {
@@ -75,7 +121,12 @@ func newMatrix(r, c int) [][]uint8 {
 func evaluatePolynomialsAt(coefficients [][]uint8, x uint8, out []uint8) {
 	N := len(coefficients[0])
 	degree := len(coefficients) - 1
-	result := make([]uint8, N)
+
+	resultBuff := polynomialBufferPool.Get().(bytes.Buffer)
+	defer polynomialBufferPool.Put(resultBuff)
+	resultBuff.Reset()
+	resultBuff.Grow(N)
+	result := resultBuff.Bytes()[0:N]
 
 	// Compute the value at x in all the N polynomials using Horner's method.
 	copy(result, coefficients[degree])
@@ -83,6 +134,25 @@ func evaluatePolynomialsAt(coefficients [][]uint8, x uint8, out []uint8) {
 		result = gf.AddVector(coefficients[i], gf.MulConstVector(x, result))
 	}
 	copy(out[:N], result)
+}
+
+func evaluatePolynomialsAtWithCoefficientsBuffer(coefficientsBuff []uint8, rowLen int, x uint8, out []uint8) {
+	degree := len(coefficientsBuff)/rowLen-1
+
+	resultBuff := polynomialBufferPool.Get().(bytes.Buffer)
+	defer polynomialBufferPool.Put(resultBuff)
+	resultBuff.Reset()
+	resultBuff.Grow(rowLen)
+	result := resultBuff.Bytes()[0:rowLen]
+
+	// Compute the value at x in all the N polynomials using Horner's method.
+	s := degree*rowLen
+	e := s + rowLen
+	copy(result, coefficientsBuff[s:e])
+	for i := degree - 1; i >= 0; i-- {
+		result = gf.AddVector(coefficientsBuff[i*rowLen:rowLen], gf.MulConstVector(x, result))
+	}
+	copy(out[:rowLen], result)
 }
 
 // genericEvaluatePolynomialsAt assumes x is not 0.

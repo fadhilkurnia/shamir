@@ -1,6 +1,7 @@
 package shamir
 
 import (
+	"bytes"
 	"fmt"
 	"github.com/fadhilkurnia/shamir/csprng"
 	"log"
@@ -14,6 +15,14 @@ const (
 	// a one byte tag to the share.
 	ShareOverhead = 1
 )
+
+var bPool sync.Pool
+
+func init() {
+	bPool = sync.Pool{
+		New: func() interface{} {return bytes.Buffer{}},
+	}
+}
 
 // Split takes an arbitrarily long secret and generates a `parts`
 // number of shares, `threshold` of which are required to reconstruct
@@ -49,23 +58,47 @@ func Split(secret []byte, parts, threshold int) ([][]byte, error) {
 	// ...
 	// partN: {y1, y2, .., yN, x}
 	out := make([][]byte, parts)
+	buff := make([]byte, (len(secret)+1)*parts)
 	for idx := range out {
-		out[idx] = make([]byte, len(secret)+1)
+		s := (len(secret)+1)*idx
+		e := s + len(secret)+1
+		out[idx] = buff[s:e]
 		out[idx][len(secret)] = uint8(xCoordinates[idx]) + 1
 	}
+
+	N := len(secret)
+	degree := threshold-1
+
+	// get temporary buffers from pool
+	polBytesBuff := bPool.Get().(bytes.Buffer)
+	defer bPool.Put(polBytesBuff)
+	polBytesBuff.Reset()
+	polBytesBuff.Grow((degree+1)*N)
+	polBuff := polBytesBuff.Bytes()[0:(degree+1)*N]
 
 	// Construct a random polynomial for N bytes of the secret.
 	// Because we are using a field of size 256, we can only represent
 	// a single byte as the intercept of the polynomial, so we must
 	// use a new polynomial for each byte.
-	// polynomials is a matrix with (N x degree) dimension
-	polynomials, err := makePolynomials(secret, threshold-1)
+	// polynomials is a matrix with (N x degree+1) dimension
+	polynomials, err := makePolynomialsWithBuff(secret, degree, polBuff)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate polynomial: %v", err)
 	}
-	coefficients := transpose(polynomials)
+
+	// prepare temporary buffer for the transpose of the polynomials
+	polTransposeBytesBuff := bPool.Get().(bytes.Buffer)
+	defer bPool.Put(polTransposeBytesBuff)
+	polTransposeBytesBuff.Reset()
+	polTransposeBytesBuff.Grow(len(polynomials))
+
+	// transposing polynomials for polynomial evaluation
+	coefficientBuff := polTransposeBytesBuff.Bytes()[0:len(polynomials)]
+	transposeMatrixBuffer(coefficientBuff, polynomials, degree+1)
+
+	// evaluating the polynomials at the secret points x
 	for i := 0; i < parts; i++ {
-		evaluatePolynomialsAt(coefficients, uint8(xCoordinates[i])+1, out[i])
+		evaluatePolynomialsAtWithCoefficientsBuffer(coefficientBuff, N, uint8(xCoordinates[i])+1, out[i][0:N])
 	}
 
 	// Return the encoded secrets
@@ -102,8 +135,11 @@ func SplitWithRandomizerOld(secret []byte, parts, threshold int, randomizer *csp
 	// ...
 	// partN: {y1, y2, .., yN, x}
 	out := make([][]byte, parts)
+	buff := make([]byte, (len(secret)+1)*parts)
 	for idx := range out {
-		out[idx] = make([]byte, len(secret)+1)
+		s := (len(secret)+1)*idx
+		e := s + len(secret)+1
+		out[idx] = buff[s:e]
 		out[idx][len(secret)] = uint8(xCoordinates[idx]) + 1
 	}
 

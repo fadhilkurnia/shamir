@@ -1,6 +1,7 @@
 package shamir
 
 import (
+	"github.com/fadhilkurnia/shamir/csprng"
 	hcShamir "github.com/hashicorp/vault/shamir"
 	"math/rand"
 	"reflect"
@@ -17,6 +18,36 @@ func TestSplitCombine(t *testing.T) {
 	isEqual := reflect.DeepEqual(secretMsg, combinedShares)
 	if !isEqual {
 		t.Errorf("The combined secret is different. Expected: '%v', but got '%v'.\n", string(secretMsg), string(combinedShares))
+	}
+}
+
+func TestSplitCombineWithRandomizer(t *testing.T) {
+	secretMsg := []byte("The quick brown fox jumps over the lazy dog")
+
+	r := csprng.NewCSPRNG()
+	shares, _ := SplitWithRandomizerOld(secretMsg, 4, 2, r)
+	combinedShares, _ := Combine(shares[:2])
+
+	isEqual := reflect.DeepEqual(secretMsg, combinedShares)
+	if !isEqual {
+		t.Errorf("The combined secret is different. Expected: '%v', but got '%v'.\n", string(secretMsg), string(combinedShares))
+	}
+}
+
+func TestSplitIncreasingSize(t *testing.T) {
+	for size := 1000; size < 1_000_000; size += 1000 {
+		secretMsg := make([]byte, size)
+		rand.Read(secretMsg)
+
+		start := time.Now()
+		_, err := Split(secretMsg, 4, 2)
+		dur := time.Since(start)
+		if err != nil {
+			t.Error(err)
+		}
+
+		t.Logf("size: %d  time: %d", size, dur.Nanoseconds())
+
 	}
 }
 

@@ -13,15 +13,15 @@ import (
 )
 
 // key size: 16 bytes (128 bit)
-// data len type: uint16 (2 bytes), support up to 65 KB secret data
+// data len type: uint32 (4 bytes), support up to 4 GB secret data
 
 const LenKey = 16
-const LenLen = 2
+const LenLen = 4
 
 func Split(secret []byte, parts, threshold int) ([][]byte, error) {
-	if len(secret) > math.MaxUint16 {
+	if len(secret) > math.MaxUint32 {
 		return nil, fmt.Errorf(
-			"the provided secret is to large, we can only split up to %d bytes data", math.MaxUint16)
+			"the provided secret is to large, we can only split up to %d bytes data", math.MaxUint32)
 	}
 	if threshold == 0 || parts == 0 {
 		return nil, errors.New("#parts and #threshold can not be zero")
@@ -66,10 +66,10 @@ func Split(secret []byte, parts, threshold int) ([][]byte, error) {
 	}
 
 	// secret-share the key & len with shamir's secret-sharing
-	// the resulting metadata share, each is 16 bytes (key) + 2 bytes (length) + 1 bytes (ss metadata) = 19 bytes
-	lenSecret := uint16(len(encryptedSecret))
-	lenSecretBytes := make([]byte, 2)
-	binary.LittleEndian.PutUint16(lenSecretBytes, lenSecret)
+	// the resulting metadata share, each is 16 bytes (key) + 4 bytes (length) + 1 bytes (ss metadata) = 21 bytes
+	lenSecret := uint32(len(encryptedSecret))
+	lenSecretBytes := make([]byte, LenLen)
+	binary.LittleEndian.PutUint32(lenSecretBytes, lenSecret)
 	keyLenPair := append(key, lenSecretBytes...)
 	ssKeyLenPair, err := shamir.Split(keyLenPair, parts, threshold)
 	if err != nil {
@@ -90,9 +90,9 @@ func Split(secret []byte, parts, threshold int) ([][]byte, error) {
 
 // SplitWithRandomizer is exactly the same with Split but with randomizer provided by the caller
 func SplitWithRandomizer(secret []byte, parts, threshold int, randomizer *csprng.CSPRNG) ([][]byte, error) {
-	if len(secret) > math.MaxUint16 {
+	if len(secret) > math.MaxUint32 {
 		return nil, fmt.Errorf(
-			"the provided secret is to large, we can only split up to %d bytes data", math.MaxUint16)
+			"the provided secret is to large, we can only split up to %d bytes data", math.MaxUint32)
 	}
 	if threshold == 0 || parts == 0 {
 		return nil, errors.New("#parts and #threshold can not be zero")
@@ -137,11 +137,11 @@ func SplitWithRandomizer(secret []byte, parts, threshold int, randomizer *csprng
 	}
 
 	// secret-share the key & len with shamir's secret-sharing
-	// the resulting metadata share, each is 16 bytes (key) + 2 bytes (length) + 1 bytes (ss metadata) = 19 bytes
-	// note that there is also 1 byte part-id, so the total metadata is 20 bytes (fixed).
-	lenSecret := uint16(len(encryptedSecret))
-	lenSecretBytes := make([]byte, 2)
-	binary.LittleEndian.PutUint16(lenSecretBytes, lenSecret)
+	// the resulting metadata share, each is 16 bytes (key) + 4 bytes (length) + 1 bytes (ss metadata) = 21 bytes
+	// note that there is also 1 byte part-id, so the total metadata is 22 bytes (fix regardless the secret size).
+	lenSecret := uint32(len(encryptedSecret))
+	lenSecretBytes := make([]byte, LenLen)
+	binary.LittleEndian.PutUint32(lenSecretBytes, lenSecret)
 	keyLenPair := append(key, lenSecretBytes...)
 	ssKeyLenPair, err := shamir.SplitWithRandomizer(keyLenPair, parts, threshold, randomizer)
 	if err != nil {
@@ -172,9 +172,9 @@ func newByteMatrix(r, c int) [][]byte {
 }
 
 func Combine(ssData [][]byte, parts, threshold int) ([]byte, error) {
-	if len(ssData[0]) > math.MaxUint16 {
+	if len(ssData[0]) > math.MaxUint32 {
 		return nil, fmt.Errorf(
-			"the provided secret is to large, we can only combine up to %d bytes data", math.MaxUint16)
+			"the provided secret is too large, we can only combine up to %d bytes data", math.MaxUint32)
 	}
 	if threshold == 0 || parts == 0 {
 		return nil, errors.New("#parts and #threshold can not be zero")
@@ -230,7 +230,7 @@ func Combine(ssData [][]byte, parts, threshold int) ([]byte, error) {
 		return nil, err
 	}
 	key := metadata[:LenKey]
-	length := binary.LittleEndian.Uint16(metadata[LenKey:])
+	length := binary.LittleEndian.Uint32(metadata[LenKey:])
 
 	// decode the ciphertext
 	decoder, err := reedsolomon.New(threshold, parts-threshold)

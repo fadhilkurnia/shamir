@@ -34,6 +34,14 @@ func BenchmarkSplit(b *testing.B) {
 	}
 }
 
+func BenchmarkSplit10KB(b *testing.B) {
+	b.SetBytes(int64(len(bytes10k)))
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, _ = Split(bytes10k, 4, 2)
+	}
+}
+
 func BenchmarkSplitWithOldRandomizer(b *testing.B) {
 	r := csprng.NewCSPRNG()
 	b.SetBytes(int64(len(bytes1M)))

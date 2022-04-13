@@ -59,6 +59,22 @@ func TestReedSolomonSplit(t *testing.T) {
 	}
 }
 
+func TestSplitLen(t *testing.T) {
+	parts := 5
+	threshold := 3
+
+	for scrtLen := 1; scrtLen <= 5000; scrtLen++ {
+		secretMsg := make([]byte, scrtLen)
+		rand.Read(secretMsg)
+		shares, err := Split(secretMsg, parts, threshold)
+		if err != nil {
+			fmt.Printf("failed to split the message: %v", err)
+		}
+		t.Logf("n:%d, t:%d, original len: %d, encoded len: %d", parts, threshold, len(secretMsg), len(shares[0]))
+	}
+
+}
+
 func TestSplitCombine(t *testing.T) {
 	secretMsg := []byte("01234567891234567890012345678909876543210987654321")
 	parts := 5
@@ -79,7 +95,7 @@ func TestSplitCombine(t *testing.T) {
 	if !isEqual {
 		t.Errorf("The combined secret is different. Expected: '%v', but got '%v'.\n", string(secretMsg), string(combinedShares))
 	}
-	expectedLen := len(secretMsg)/(threshold) + 1 + 16 + 2 + 1 // 1 byte partID, 16 bytes key, 2 bytes length, 1 bytes ss metadata
+	expectedLen := len(secretMsg)/(threshold) + 1 + 16 + 4 + 1 // 1 byte partID, 16 bytes key, 4 bytes length, 1 bytes ss metadata
 	if len(secretMsg) % (threshold) != 0 {
 		expectedLen += 1
 	}
@@ -120,6 +136,30 @@ func TestSplitCombine3(t *testing.T) {
 	if err != nil {
 		fmt.Printf("failed to split the message: %v", err)
 	}
+	combinedShares, err := Combine(shares, parts, threshold)
+	if err != nil {
+		fmt.Printf("failed to combine the message: %v", err)
+	}
+
+	t.Logf("original len: %d, encoded len: %d", len(secretMsg), len(shares[0]))
+
+	isEqual := reflect.DeepEqual(secretMsg, combinedShares)
+	if !isEqual {
+		t.Errorf("The combined secret is different. Expected: '%v', but got '%v'.\n", string(secretMsg), string(combinedShares))
+	}
+}
+
+func TestSplitCombine1MB(t *testing.T) {
+	secretMsg := make([]byte, 1_000_000)
+	rand.Read(secretMsg)
+	parts := 5
+	threshold := 2
+
+	shares, err := Split(secretMsg, parts, threshold)
+	if err != nil {
+		fmt.Printf("failed to split the message: %v", err)
+	}
+
 	combinedShares, err := Combine(shares, parts, threshold)
 	if err != nil {
 		fmt.Printf("failed to combine the message: %v", err)

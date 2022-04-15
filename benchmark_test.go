@@ -1,10 +1,14 @@
 package main
 
 import (
+	"bufio"
+	"fmt"
 	"github.com/fadhilkurnia/shamir/krawczyk"
 	"github.com/fadhilkurnia/shamir/shamir"
 	hcShamir "github.com/hashicorp/vault/shamir"
+	"math"
 	"math/rand"
+	"os"
 	"testing"
 	"time"
 )
@@ -315,5 +319,116 @@ func BenchmarkSplitCombineKrawczyk10K(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		ss, _ := krawczyk.Split(bytes10k, 4, 2)
 		_, _ = krawczyk.Combine(ss, 4, 2)
+	}
+}
+
+func TestSplitIncreasingSize(t *testing.T) {
+	numTrials := 50
+	sizes := make([]int, 0)
+	for size := 10; size < 1_000; size += 10 {
+		sizes = append(sizes, size)
+	}
+	for size := 1_000; size < 1_000_000; size += 1000 {
+		sizes = append(sizes, size)
+	}
+
+	f, err := os.Create("proc_time.csv")
+	if err != nil {
+		t.Error(err)
+	}
+	defer f.Close()
+	w := bufio.NewWriter(f)
+	_, err = w.WriteString("algo,size(bytes),avg_proc_time(ms),std_err(ms)\n")
+	if err != nil {
+		t.Error(err)
+	}
+
+	// shamir secret sharing
+	for s := 0; s < len(sizes); s++ {
+		size := sizes[s]
+		secretMsg := make([]byte, size)
+		rand.Read(secretMsg)
+
+		// warmups
+		for i:=0; i < 10; i++ {
+			_, err := shamir.Split(secretMsg, 4, 2)
+			if err != nil {
+				t.Error(err)
+			}
+		}
+
+		durs := make([]time.Duration, numTrials)
+		sum := int64(0) // sum is stored in us
+		for i:=0; i < numTrials; i++ {
+			start := time.Now()
+			_, err := shamir.Split(secretMsg, 4, 2)
+			durs[i] = time.Since(start)
+			sum += durs[i].Microseconds()
+			if err != nil {
+				t.Error(err)
+			}
+		}
+
+		// counting average and std.err (in ms)
+		avgDur := float64(sum)/1000.0/float64(numTrials)
+		stdDev := 0.0
+		for i:=0; i < numTrials; i++ {
+			stdDev += math.Pow(float64(durs[i].Nanoseconds())/1000000.0 - avgDur, 2)
+		}
+		stdDev = math.Sqrt(stdDev/float64(numTrials))
+		stdErr := stdDev / math.Sqrt(float64(numTrials))
+
+		// the results are stored in bytes for size, and ms for svg.time and std.err
+		_, err = w.WriteString(fmt.Sprintf("shamir,%d,%.4f,%.4f\n", size, avgDur, stdErr))
+		if err != nil {
+			t.Error(err)
+		}
+	}
+
+	// krawczyk secret sharing (ssms)
+	for s := 0; s < len(sizes); s++ {
+		size := sizes[s]
+		secretMsg := make([]byte, size)
+		rand.Read(secretMsg)
+
+		// warmups
+		for i:=0; i < 10; i++ {
+			_, err := krawczyk.Split(secretMsg, 4, 2)
+			if err != nil {
+				t.Error(err)
+			}
+		}
+
+		durs := make([]time.Duration, numTrials)
+		sum := int64(0) // sum is stored in us
+		for i:=0; i < numTrials; i++ {
+			start := time.Now()
+			_, err := krawczyk.Split(secretMsg, 4, 2)
+			durs[i] = time.Since(start)
+			sum += durs[i].Microseconds()
+			if err != nil {
+				t.Error(err)
+			}
+		}
+
+		// counting average and std.err (in ms)
+		avgDur := float64(sum)/1000.0/float64(numTrials)
+		stdDev := 0.0
+		for i:=0; i < numTrials; i++ {
+			stdDev += math.Pow(float64(durs[i].Nanoseconds())/1000000.0 - avgDur, 2)
+		}
+		stdDev = math.Sqrt(stdDev/float64(numTrials))
+		stdErr := stdDev / math.Sqrt(float64(numTrials))
+
+		// the results are stored in bytes for size, and ms for svg.time and std.err
+		_, err = w.WriteString(fmt.Sprintf("ssms,%d,%.4f,%.4f\n", size, avgDur, stdErr))
+		if err != nil {
+			t.Error(err)
+		}
+
+		err = w.Flush()
+		if err != nil {
+			t.Error(err)
+		}
 	}
 }

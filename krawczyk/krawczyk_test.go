@@ -174,6 +174,19 @@ func TestSplitCombine1MB(t *testing.T) {
 }
 
 func TestSplitIncreasingSize(t *testing.T) {
+	for size := 10; size < 1_000; size += 10 {
+		secretMsg := make([]byte, size)
+		rand.Read(secretMsg)
+
+		start := time.Now()
+		_, err := Split(secretMsg, 4, 2)
+		dur := time.Since(start)
+		if err != nil {
+			t.Error(err)
+		}
+
+		t.Logf("size: %d  time: %d", size, dur.Nanoseconds())
+	}
 	for size := 1000; size < 1_000_000; size += 1000 {
 		secretMsg := make([]byte, size)
 		rand.Read(secretMsg)

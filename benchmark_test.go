@@ -9,6 +9,7 @@ import (
 	"math"
 	"math/rand"
 	"os"
+	"runtime"
 	"testing"
 	"time"
 )
@@ -325,10 +326,10 @@ func BenchmarkSplitCombineKrawczyk10K(b *testing.B) {
 func TestSplitIncreasingSize(t *testing.T) {
 	numTrials := 50
 	sizes := make([]int, 0)
-	for size := 10; size < 1_000; size += 10 {
+	for size := 10; size < 5_000; size += 10 {
 		sizes = append(sizes, size)
 	}
-	for size := 1_000; size < 1_000_000; size += 1000 {
+	for size := 5_000; size < 1_000_000; size += 1000 {
 		sizes = append(sizes, size)
 	}
 
@@ -348,6 +349,8 @@ func TestSplitIncreasingSize(t *testing.T) {
 		size := sizes[s]
 		secretMsg := make([]byte, size)
 		rand.Read(secretMsg)
+
+		runtime.GC()
 
 		// warmups
 		for i:=0; i < 10; i++ {
@@ -390,6 +393,8 @@ func TestSplitIncreasingSize(t *testing.T) {
 		size := sizes[s]
 		secretMsg := make([]byte, size)
 		rand.Read(secretMsg)
+
+		runtime.GC()
 
 		// warmups
 		for i:=0; i < 10; i++ {

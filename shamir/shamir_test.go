@@ -5,6 +5,8 @@ import (
 	hcShamir "github.com/hashicorp/vault/shamir"
 	"math/rand"
 	"reflect"
+	"runtime"
+	"sync"
 	"testing"
 	"time"
 )
@@ -21,12 +23,53 @@ func TestSplitCombine(t *testing.T) {
 	}
 }
 
-func TestSplitCombineWithRandomizer(t *testing.T) {
+func TestSplitCombineVaryT(t *testing.T) {
+	secretMsg := []byte("The quick brown fox jumps over the lazy dog")
+	maxParts := 20
+
+	for th := 2; th <= maxParts; th++ {
+		shares, _ := Split(secretMsg, maxParts, th)
+		combinedShares, _ := Combine(shares)
+
+		isEqual := reflect.DeepEqual(secretMsg, combinedShares)
+		if !isEqual {
+			t.Errorf("The combined secret is different. Expected: '%v', but got '%v'.\n", string(secretMsg), string(combinedShares))
+		}
+	}
+}
+
+func TestSplitCombineWithRandomizerOld(t *testing.T) {
 	secretMsg := []byte("The quick brown fox jumps over the lazy dog")
 
 	r := csprng.NewCSPRNG()
 	shares, _ := SplitWithRandomizerOld(secretMsg, 4, 2, r)
 	combinedShares, _ := Combine(shares[:2])
+
+	isEqual := reflect.DeepEqual(secretMsg, combinedShares)
+	if !isEqual {
+		t.Errorf("The combined secret is different. Expected: '%v', but got '%v'.\n", string(secretMsg), string(combinedShares))
+	}
+}
+
+func TestSplitCombineWithRandomizer(t *testing.T) {
+	secretMsg := []byte("The quick brown fox jumps over the lazy dog")
+
+	r := csprng.NewCSPRNG()
+	shares, _ := SplitWithRandomizer(secretMsg, 4, 2, r)
+	combinedShares, _ := Combine(shares[:2])
+
+	isEqual := reflect.DeepEqual(secretMsg, combinedShares)
+	if !isEqual {
+		t.Errorf("The combined secret is different. Expected: '%v', but got '%v'.\n", string(secretMsg), string(combinedShares))
+	}
+}
+
+func TestSplitCombineWithRandomizer2(t *testing.T) {
+	secretMsg := []byte("The quick brown fox jumps over the lazy dog")
+
+	r := csprng.NewCSPRNG()
+	shares, _ := SplitWithRandomizer(secretMsg, 4, 4, r)
+	combinedShares, _ := Combine(shares)
 
 	isEqual := reflect.DeepEqual(secretMsg, combinedShares)
 	if !isEqual {
@@ -198,4 +241,89 @@ func TestSplitCombineVault(t *testing.T) {
 	if !isEqual {
 		t.Errorf("The combined secret is different. Expected: '%v', but got '%v'.\n", string(hcCombinedShares), string(combinedShares))
 	}
+}
+
+func TestParallelSplitWithRandomizer(t *testing.T) {
+	numThreads := runtime.NumCPU()
+	numRequest := 1_000_000
+	reqSize := 50
+
+	buff := make([]byte, reqSize)
+	rand.Read(buff)
+	input := make(chan []byte, 1_000)
+	output := make(chan [][]byte, 1_000)
+
+	for i := 0; i < numThreads; i++ {
+		go func() {
+			r := csprng.NewCSPRNG()
+			for in := range input {
+				res, _ := SplitWithRandomizer(in, 4, 2, r)
+				output <- res
+			}
+		}()
+	}
+
+	start := time.Now()
+	go func() {
+		for i := 0; i < numRequest; i++ {
+			in := make([]byte, 50)
+			copy(in, buff)
+			input <- in
+		}
+	}()
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for i := 0; i < numRequest; i++ {
+			<-output
+		}
+	}()
+	wg.Wait()
+
+	dur := time.Since(start)
+	t.Log("duration ", dur)
+	t.Log("capacity ", float64(numRequest)/dur.Seconds(), "req/s", numThreads, "threads")
+}
+
+func TestParallelSplit(t *testing.T) {
+	numThreads := runtime.NumCPU()
+	numRequest := 1_000_000
+	reqSize := 50
+
+	buff := make([]byte, reqSize)
+	rand.Read(buff)
+	input := make(chan []byte, 1_000)
+	output := make(chan [][]byte, 1_000)
+
+	for i := 0; i < numThreads; i++ {
+		go func() {
+			for in := range input {
+				res, _ := Split(in, 4, 2)
+				output <- res
+			}
+		}()
+	}
+
+	start := time.Now()
+	go func() {
+		for i := 0; i < numRequest; i++ {
+			in := make([]byte, 50)
+			copy(in, buff)
+			input <- in
+		}
+	}()
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for i := 0; i < numRequest; i++ {
+			<-output
+		}
+	}()
+	wg.Wait()
+
+	dur := time.Since(start)
+	t.Log("duration ", dur)
+	t.Log("capacity ", float64(numRequest)/dur.Seconds(), "req/s", numThreads, "threads")
 }

@@ -38,6 +38,27 @@ func makePolynomialsWithBuff(intercepts []uint8, degree int, buffer []uint8) ([]
 	return buffer, nil
 }
 
+func makePolynomialsWithBuffAndRandomizer(intercepts []uint8, degree int, buffer []uint8, randomizer *csprng.CSPRNG) ([]uint8, error) {
+	N := len(intercepts)
+
+	// assign random coefficients for all the N polynomials
+	_, err := randomizer.Read(buffer)
+	if err != nil {
+		return nil, err
+	}
+
+	for p := 0; p < N; p++ {
+		s := (degree+1)*p
+		e := s + degree+1
+
+		// polynomials[p][0] is the intercept
+		// polynomials[p][1:] is the other coefficients that we fill with random
+		polynomialP := buffer[s:e]
+		polynomialP[0] = intercepts[p]
+	}
+	return buffer, nil
+}
+
 func makePolynomials(intercepts []uint8, degree int) ([][]uint8, error) {
 	N := len(intercepts)
 	polynomials := newMatrix(N, degree+1)
@@ -147,10 +168,12 @@ func evaluatePolynomialsAtWithCoefficientsBuffer(coefficientsBuff []uint8, rowLe
 
 	// Compute the value at x in all the N polynomials using Horner's method.
 	s := degree*rowLen
-	e := s + rowLen
+	e := s+rowLen
 	copy(result, coefficientsBuff[s:e])
 	for i := degree - 1; i >= 0; i-- {
-		result = gf.AddVector(coefficientsBuff[i*rowLen:rowLen], gf.MulConstVector(x, result))
+		s = i*rowLen
+		e = s+rowLen
+		result = gf.AddVector(coefficientsBuff[s:e], gf.MulConstVector(x, result))
 	}
 	copy(out[:rowLen], result)
 }

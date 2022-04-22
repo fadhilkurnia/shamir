@@ -105,7 +105,7 @@ func Split(secret []byte, parts, threshold int) ([][]byte, error) {
 	return out, nil
 }
 
-// SplitWithRandomizerOld is exactly the same with Split but with randomizer provided by the caller
+// SplitWithRandomizerOld will be deprecated soon
 func SplitWithRandomizerOld(secret []byte, parts, threshold int, randomizer *csprng.CSPRNG) ([][]byte, error) {
 	// Sanity check the input
 	if parts < threshold {
@@ -147,7 +147,7 @@ func SplitWithRandomizerOld(secret []byte, parts, threshold int, randomizer *csp
 	// Because we are using a field of size 256, we can only represent
 	// a single byte as the intercept of the polynomial, so we must
 	// use a new polynomial for each byte.
-	// polynomials is a matrix with (N x degree) dimension
+	// polynomials is a matrix with (N x degree+1) dimension
 	polynomials, err := makePolynomialsWithRandomizer(secret, threshold-1, randomizer)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate polynomial: %v", err)
@@ -190,23 +190,47 @@ func SplitWithRandomizer(secret []byte, parts, threshold int, randomizer *csprng
 	// ...
 	// partN: {y1, y2, .., yN, x}
 	out := make([][]byte, parts)
+	buff := make([]byte, (len(secret)+1)*parts)
 	for idx := range out {
-		out[idx] = make([]byte, len(secret)+1)
+		s := (len(secret)+1)*idx
+		e := s + len(secret)+1
+		out[idx] = buff[s:e]
 		out[idx][len(secret)] = uint8(xCoordinates[idx]) + 1
 	}
+
+	N := len(secret)
+	degree := threshold-1
+
+	// get temporary buffers from pool
+	polBytesBuff := bPool.Get().(bytes.Buffer)
+	defer bPool.Put(polBytesBuff)
+	polBytesBuff.Reset()
+	polBytesBuff.Grow((degree+1)*N)
+	polBuff := polBytesBuff.Bytes()[0:(degree+1)*N]
 
 	// Construct a random polynomial for N bytes of the secret.
 	// Because we are using a field of size 256, we can only represent
 	// a single byte as the intercept of the polynomial, so we must
 	// use a new polynomial for each byte.
-	// polynomials is a matrix with (N x degree) dimension
-	polynomials, err := makePolynomialsWithRandomizer(secret, threshold-1, randomizer)
+	// polynomials is a matrix with (N x degree+1) dimension
+	polynomials, err := makePolynomialsWithBuffAndRandomizer(secret, degree, polBuff, randomizer)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate polynomial: %v", err)
 	}
-	coefficients := transpose(polynomials)
+
+	// prepare temporary buffer for the transpose of the polynomials
+	polTransposeBytesBuff := bPool.Get().(bytes.Buffer)
+	defer bPool.Put(polTransposeBytesBuff)
+	polTransposeBytesBuff.Reset()
+	polTransposeBytesBuff.Grow(len(polynomials))
+
+	// transposing polynomials for polynomial evaluation
+	coefficientBuff := polTransposeBytesBuff.Bytes()[0:len(polynomials)]
+	transposeMatrixBuffer(coefficientBuff, polynomials, degree+1)
+
+	// evaluating the polynomials at the secret points x
 	for i := 0; i < parts; i++ {
-		evaluatePolynomialsAt(coefficients, uint8(xCoordinates[i])+1, out[i])
+		evaluatePolynomialsAtWithCoefficientsBuffer(coefficientBuff, N, uint8(xCoordinates[i])+1, out[i][0:N])
 	}
 
 	// Return the encoded secrets

@@ -1,9 +1,9 @@
 package shamir
 
 import (
-	"bytes"
 	"fmt"
 	"github.com/fadhilkurnia/shamir/csprng"
+	"github.com/fadhilkurnia/shamir/utils"
 	"log"
 	"math/rand"
 	"sync"
@@ -16,12 +16,10 @@ const (
 	ShareOverhead = 1
 )
 
-var bPool sync.Pool
+var bPool *utils.BytesBufferPool
 
 func init() {
-	bPool = sync.Pool{
-		New: func() interface{} {return bytes.Buffer{}},
-	}
+	bPool = utils.NewBytesBufferPool(0)
 }
 
 // Split takes an arbitrarily long secret and generates a `parts`
@@ -70,7 +68,7 @@ func Split(secret []byte, parts, threshold int) ([][]byte, error) {
 	degree := threshold-1
 
 	// get temporary buffers from pool
-	polBytesBuff := bPool.Get().(bytes.Buffer)
+	polBytesBuff := bPool.Get()
 	defer bPool.Put(polBytesBuff)
 	polBytesBuff.Reset()
 	polBytesBuff.Grow((degree+1)*N)
@@ -87,7 +85,7 @@ func Split(secret []byte, parts, threshold int) ([][]byte, error) {
 	}
 
 	// prepare temporary buffer for the transpose of the polynomials
-	polTransposeBytesBuff := bPool.Get().(bytes.Buffer)
+	polTransposeBytesBuff := bPool.Get()
 	defer bPool.Put(polTransposeBytesBuff)
 	polTransposeBytesBuff.Reset()
 	polTransposeBytesBuff.Grow(len(polynomials))
@@ -202,7 +200,7 @@ func SplitWithRandomizer(secret []byte, parts, threshold int, randomizer *csprng
 	degree := threshold-1
 
 	// get temporary buffers from pool
-	polBytesBuff := bPool.Get().(bytes.Buffer)
+	polBytesBuff := bPool.Get()
 	defer bPool.Put(polBytesBuff)
 	polBytesBuff.Reset()
 	polBytesBuff.Grow((degree+1)*N)
@@ -219,7 +217,7 @@ func SplitWithRandomizer(secret []byte, parts, threshold int, randomizer *csprng
 	}
 
 	// prepare temporary buffer for the transpose of the polynomials
-	polTransposeBytesBuff := bPool.Get().(bytes.Buffer)
+	polTransposeBytesBuff := bPool.Get()
 	defer bPool.Put(polTransposeBytesBuff)
 	polTransposeBytesBuff.Reset()
 	polTransposeBytesBuff.Grow(len(polynomials))

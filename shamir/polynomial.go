@@ -1,22 +1,17 @@
 package shamir
 
 import (
-	"bytes"
 	"crypto/subtle"
 	"github.com/fadhilkurnia/shamir/csprng"
 	gf "github.com/fadhilkurnia/shamir/galois"
+	"github.com/fadhilkurnia/shamir/utils"
 	"math/rand"
-	"sync"
 )
 
-var polynomialBufferPool sync.Pool
+var polynomialBufferPool *utils.BytesBufferPool
 
 func init() {
-	polynomialBufferPool = sync.Pool{
-		New: func() interface{} {
-			return bytes.Buffer{}
-		},
-	}
+	polynomialBufferPool = utils.NewBytesBufferPool(0)
 }
 
 func makePolynomialsWithBuff(intercepts []uint8, degree int, buffer []uint8) ([]uint8, error) {
@@ -143,7 +138,7 @@ func evaluatePolynomialsAt(coefficients [][]uint8, x uint8, out []uint8) {
 	N := len(coefficients[0])
 	degree := len(coefficients) - 1
 
-	resultBuff := polynomialBufferPool.Get().(bytes.Buffer)
+	resultBuff := polynomialBufferPool.Get()
 	defer polynomialBufferPool.Put(resultBuff)
 	resultBuff.Reset()
 	resultBuff.Grow(N)
@@ -160,7 +155,7 @@ func evaluatePolynomialsAt(coefficients [][]uint8, x uint8, out []uint8) {
 func evaluatePolynomialsAtWithCoefficientsBuffer(coefficientsBuff []uint8, rowLen int, x uint8, out []uint8) {
 	degree := len(coefficientsBuff)/rowLen-1
 
-	resultBuff := polynomialBufferPool.Get().(bytes.Buffer)
+	resultBuff := polynomialBufferPool.Get()
 	defer polynomialBufferPool.Put(resultBuff)
 	resultBuff.Reset()
 	resultBuff.Grow(rowLen)

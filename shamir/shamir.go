@@ -235,7 +235,6 @@ func SplitWithRandomizer(secret []byte, parts, threshold int, randomizer *csprng
 	return out, nil
 }
 
-
 func SplitGeneric(secret []byte, parts, threshold int) ([][]byte, error) {
 	// Sanity check the input
 	if parts < threshold {
@@ -416,4 +415,74 @@ func Combine(parts [][]byte) ([]byte, error) {
 		secret[idx] = val
 	}
 	return secret, nil
+}
+
+// Regenerate regenerates more secret shares given enough secret-shares
+// to reconstruct the secret polynomial (secret value). Regenerate is
+// similar with Combine, but we keep the original polynomial instead
+// of regenerating another secret polynomial.
+func Regenerate(parts [][]byte, numNewShares int) ([][]byte, error) {
+	// Verify enough parts provided
+	if len(parts) < 2 {
+		return nil, fmt.Errorf("less than two parts cannot be used to reconstruct the secret")
+	}
+
+	// Verify the parts are all the same length
+	firstPartLen := len(parts[0])
+	if firstPartLen < 2 {
+		return nil, fmt.Errorf("parts must be at least two bytes")
+	}
+	for i := 1; i < len(parts); i++ {
+		if len(parts[i]) != firstPartLen {
+			return nil, fmt.Errorf("all parts must be the same length")
+		}
+	}
+
+	// TODO: make a more efficient version of this by allocating less memory
+	// Create buffer to store the new shares
+	newShares := make([][]byte, numNewShares)
+	x_samples := make([]uint8, len(parts))
+	y_samples := make([]uint8, len(parts))
+	newXs := make([]byte, numNewShares)
+
+	// Set the x value for each sample and ensure no x_sample values are the same,
+	// otherwise div() can be unhappy
+	checkMap := map[byte]bool{}
+	for _, part := range parts {
+		samp := part[firstPartLen-1]
+		if exists := checkMap[samp]; exists {
+			return nil, fmt.Errorf("duplicate part detected")
+		}
+		checkMap[samp] = true
+	}
+
+	// generate new random x
+	if _, err := rand.Read(newXs); err != nil {
+		return nil, fmt.Errorf("failed to generate new random x: %v", err)
+	}
+	// ensure no duplicate x generated
+	for _, nx := range newXs {
+		exists := checkMap[nx]
+		for exists {
+			nx = byte(rand.Uint32())
+			exists = checkMap[nx]
+		}
+		checkMap[nx] = true
+	}
+
+	for i, share := range parts {
+		x_samples[i] = share[firstPartLen-1]
+	}
+	for k:=0; k < numNewShares; k++ {
+		newShares[k] = make([]byte, firstPartLen) // TODO: make this more efficient by allocating with buffer pool
+		newShares[k][firstPartLen-1] = newXs[k]
+		for j := 0; j < firstPartLen-1; j++ {
+			for i, share := range parts {
+				y_samples[i] = share[j]
+			}
+			newShares[k][j] = interpolatePolynomial(x_samples, y_samples, newXs[k])
+		}
+	}
+
+	return newShares, nil
 }

@@ -327,3 +327,40 @@ func TestParallelSplit(t *testing.T) {
 	t.Log("duration ", dur)
 	t.Log("capacity ", float64(numRequest)/dur.Seconds(), "req/s", numThreads, "threads")
 }
+
+func TestSplitCombineSplitMix(t *testing.T) {
+	secretMsg := []byte("The quick brown fox jumps over the lazy dog")
+	shares, _ := Split(secretMsg, 5, 2)
+
+	newShares, _ := Regenerate(shares[:2], 5)
+
+	mixShares := make([][]byte, 2)
+	mixShares[0] = make([]byte, len(shares[0]))
+	mixShares[1] = make([]byte, len(newShares[1]))
+	copy(mixShares[0], shares[0])
+	copy(mixShares[1], newShares[1])
+
+	recoveredValMix, _ := Combine(mixShares)
+	isEqual := reflect.DeepEqual(secretMsg, recoveredValMix)
+	if !isEqual {
+		t.Errorf("The combined secret is different. Expected: '%v', but got '%v'.\n", string(secretMsg), string(recoveredValMix))
+		t.Errorf("%v vs %v", secretMsg, recoveredValMix)
+	}
+}
+
+func TestRegenerateShares(t *testing.T) {
+	secretMsg := []byte("The quick brown fox jumps over the lazy dog")
+	shares, _ := Split(secretMsg, 5, 2)
+
+	newShares, err := Regenerate(shares[:2], 4)
+	if err != nil {
+		t.Errorf("failed to regenerate new shares: %v", err)
+	}
+
+	combinedShares, _ := Combine(newShares[:2])
+	isEqual := reflect.DeepEqual(secretMsg, combinedShares)
+	if !isEqual {
+		t.Errorf("The combined secret is different. Expected: '%v', but got '%v'.\n", string(secretMsg), string(combinedShares))
+		t.Errorf("%v vs %v", secretMsg, combinedShares)
+	}
+}

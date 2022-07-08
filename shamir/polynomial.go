@@ -271,7 +271,7 @@ func (p *polynomial) evaluate(x uint8) uint8 {
 }
 
 // interpolatePolynomial takes N sample points and returns
-// the value at a given x using a lagrange interpolation.
+// the value at a given x using lagrange interpolation.
 func interpolatePolynomial(x_samples, y_samples []uint8, x uint8) uint8 {
 	limit := len(x_samples)
 	var result, basis uint8

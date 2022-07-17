@@ -334,7 +334,7 @@ func TestSplitIncreasingSize(t *testing.T) {
 		sizes = append(sizes, size)
 	}
 
-	f, err := os.Create("proc_time.csv")
+	f, err := os.Create("data/proc_time.csv")
 	if err != nil {
 		t.Error(err)
 	}
@@ -449,7 +449,7 @@ func TestSplitWithRandomizerAndIncreasingSize(t *testing.T) {
 		sizes = append(sizes, size)
 	}
 
-	f, err := os.Create("proc_time_randomizer.csv")
+	f, err := os.Create("data/proc_time_randomizer.csv")
 	if err != nil {
 		t.Error(err)
 	}
@@ -461,7 +461,6 @@ func TestSplitWithRandomizerAndIncreasingSize(t *testing.T) {
 	}
 
 	r := csprng.NewCSPRNG()
-
 
 	// shamir secret sharing
 	for s := 0; s < len(sizes); s++ {

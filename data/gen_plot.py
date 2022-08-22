@@ -15,17 +15,17 @@ data_ssms = data_algos[1][:600]
 
 sizes = data_shamir.iloc[:,1]/1000
 proc_time_shamir_avg = data_shamir.iloc[:,2]
-proc_time_shamir_std_err = data_shamir.iloc[:,3]
+proc_time_shamir_std_dev = data_shamir.iloc[:,4]
 proc_time_ssms_avg = data_ssms.iloc[:,2]
-proc_time_ssms_std_err = data_ssms.iloc[:,3]
+proc_time_ssms_std_dev = data_ssms.iloc[:,4]
 
 fig, ax = plt.subplots()
 fig.set_size_inches(5, 3)
 
 ax.plot(sizes, proc_time_shamir_avg, label='Shamir', color='#ff7f0e')
-ax.fill_between(sizes, proc_time_shamir_avg-proc_time_shamir_std_err, proc_time_shamir_avg+proc_time_shamir_std_err, facecolor='#ff7f0e', alpha=0.5)
+ax.fill_between(sizes, proc_time_shamir_avg-proc_time_shamir_std_dev, proc_time_shamir_avg+proc_time_shamir_std_dev, facecolor='#ff7f0e', alpha=0.5)
 ax.plot(sizes, proc_time_ssms_avg, label='SSMS', color='#2ca02c')
-ax.fill_between(sizes, proc_time_ssms_avg-proc_time_ssms_std_err, proc_time_ssms_avg+proc_time_ssms_std_err, facecolor='#2ca02c', alpha=0.5)
+ax.fill_between(sizes, proc_time_ssms_avg-proc_time_ssms_std_dev, proc_time_ssms_avg+proc_time_ssms_std_dev, facecolor='#2ca02c', alpha=0.5)
 ax.grid()
 ax.set_ylabel('Avg latency (ms)')
 ax.set_xlabel('Secret size (KB)')
@@ -40,9 +40,9 @@ ax.set_ylim([0, y_max])
 # Make the zoom-in plot:
 axins = ax.inset_axes([0.03, 0.57, 0.40, 0.40])
 axins.plot(sizes, proc_time_shamir_avg, label='shamir', color='#ff7f0e')
-axins.fill_between(sizes, proc_time_shamir_avg-proc_time_shamir_std_err, proc_time_shamir_avg+proc_time_shamir_std_err, facecolor='#ff7f0e', alpha=0.5)
+axins.fill_between(sizes, proc_time_shamir_avg-proc_time_shamir_std_dev, proc_time_shamir_avg+proc_time_shamir_std_dev, facecolor='#ff7f0e', alpha=0.5)
 axins.plot(sizes, proc_time_ssms_avg, label='ssms', color='#2ca02c')
-axins.fill_between(sizes, proc_time_ssms_avg-proc_time_ssms_std_err, proc_time_ssms_avg+proc_time_ssms_std_err, facecolor='#2ca02c', alpha=0.5)
+axins.fill_between(sizes, proc_time_ssms_avg-proc_time_ssms_std_dev, proc_time_ssms_avg+proc_time_ssms_std_dev, facecolor='#2ca02c', alpha=0.5)
 axins.set_xlim(0.001, 1.49)
 axins.set_ylim(0.0, 0.026)
 axins.get_yaxis().set_visible(False)

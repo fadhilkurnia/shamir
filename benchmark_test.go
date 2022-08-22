@@ -350,7 +350,7 @@ func TestSplitIncreasingSize(t *testing.T) {
 	for size := 10; size < 5_000; size += 10 {
 		sizes = append(sizes, size)
 	}
-	for size := 5_000; size < 1_000_000; size += 1000 {
+	for size := 5_000; size < 200_000; size += 1000 {
 		sizes = append(sizes, size)
 	}
 
@@ -447,7 +447,7 @@ func TestSplitIncreasingSize(t *testing.T) {
 		stdErr := stdDev / math.Sqrt(float64(numTrials))
 
 		// the results are stored in bytes for size, and ms for svg.time and std.err
-		_, err = w.WriteString(fmt.Sprintf("shamir,%d,%.4f,%.4f,%.4f\n", size, avgDur, stdErr, stdDev))
+		_, err = w.WriteString(fmt.Sprintf("ssms,%d,%.4f,%.4f,%.4f\n", size, avgDur, stdErr, stdDev))
 		if err != nil {
 			t.Error(err)
 		}
@@ -465,7 +465,7 @@ func TestSplitWithRandomizerAndIncreasingSize(t *testing.T) {
 	for size := 10; size < 5_000; size += 10 {
 		sizes = append(sizes, size)
 	}
-	for size := 5_000; size < 1_000_000; size += 1000 {
+	for size := 5_000; size < 200_000; size += 1000 {
 		sizes = append(sizes, size)
 	}
 
@@ -564,7 +564,7 @@ func TestSplitWithRandomizerAndIncreasingSize(t *testing.T) {
 		stdErr := stdDev / math.Sqrt(float64(numTrials))
 
 		// the results are stored in bytes for size, and ms for svg.time and std.err
-		_, err = w.WriteString(fmt.Sprintf("shamir,%d,%.4f,%.4f,%.4f\n", size, avgDur, stdErr, stdDev))
+		_, err = w.WriteString(fmt.Sprintf("ssms,%d,%.4f,%.4f,%.4f\n", size, avgDur, stdErr, stdDev))
 		if err != nil {
 			t.Error(err)
 		}

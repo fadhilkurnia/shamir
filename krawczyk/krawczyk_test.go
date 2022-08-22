@@ -64,7 +64,7 @@ func TestReedSolomonSplit(t *testing.T) {
 
 func TestSplitLen(t *testing.T) {
 	parts := 5
-	threshold := 3
+	threshold := 2
 
 	for scrtLen := 1; scrtLen <= 5000; scrtLen++ {
 		secretMsg := make([]byte, scrtLen)

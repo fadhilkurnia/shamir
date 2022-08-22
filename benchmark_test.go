@@ -7,6 +7,7 @@ import (
 	"github.com/fadhilkurnia/shamir/krawczyk"
 	"github.com/fadhilkurnia/shamir/shamir"
 	hcShamir "github.com/hashicorp/vault/shamir"
+	"github.com/klauspost/reedsolomon"
 	"math"
 	"math/rand"
 	"os"
@@ -32,14 +33,33 @@ func init() {
 }
 
 func BenchmarkSplitSIMD100(b *testing.B) {
-	b.SetBytes(int64(len(bytes100)))
+	b.SetBytes(int64(len(bytes1k)))
+	e, _ := reedsolomon.New(2, 2)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		var results [][]byte
-		results, _ = shamir.Split(bytes100, 4, 2)
+		results, _ = e.Split(bytes1k)
 		if len(results) == 0 {
 			break
 		}
+	}
+}
+
+func BenchmarkCombineSIMD100(b *testing.B) {
+	b.SetBytes(int64(len(bytes1k)))
+	e, _ := reedsolomon.New(2, 2)
+	var shares [][]byte
+	shares, _ = e.Split(bytes1k)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		shares[0] = nil
+		shares[2] = nil
+		e.ReconstructData(shares)
+		//recVal, _ := hcShamir.Combine(shares[:2])
+		//newShares, _ := hcShamir.Split(recVal, 4, 2)
+		//if len(newShares) == 0 {
+		//	break
+		//}
 	}
 }
 
@@ -472,7 +492,7 @@ func TestSplitWithRandomizerAndIncreasingSize(t *testing.T) {
 
 		// warmups
 		for i:=0; i < 10; i++ {
-			_, err := shamir.SplitWithRandomizer(secretMsg, 4, 2, r)
+			_, err := shamir.SplitWithRandomizer(secretMsg, 5, 2, r)
 			if err != nil {
 				t.Error(err)
 			}
@@ -482,7 +502,7 @@ func TestSplitWithRandomizerAndIncreasingSize(t *testing.T) {
 		sum := int64(0) // sum is stored in us
 		for i:=0; i < numTrials; i++ {
 			start := time.Now()
-			_, err := shamir.SplitWithRandomizer(secretMsg, 4, 2, r)
+			_, err := shamir.SplitWithRandomizer(secretMsg, 5, 2, r)
 			durs[i] = time.Since(start)
 			sum += durs[i].Microseconds()
 			if err != nil {
@@ -516,7 +536,7 @@ func TestSplitWithRandomizerAndIncreasingSize(t *testing.T) {
 
 		// warmups
 		for i:=0; i < 10; i++ {
-			_, err := krawczyk.SplitWithRandomizer(secretMsg, 4, 2, r)
+			_, err := krawczyk.SplitWithRandomizer(secretMsg, 5, 2, r)
 			if err != nil {
 				t.Error(err)
 			}
@@ -526,7 +546,7 @@ func TestSplitWithRandomizerAndIncreasingSize(t *testing.T) {
 		sum := int64(0) // sum is stored in us
 		for i:=0; i < numTrials; i++ {
 			start := time.Now()
-			_, err := krawczyk.SplitWithRandomizer(secretMsg, 4, 2, r)
+			_, err := krawczyk.SplitWithRandomizer(secretMsg, 5, 2, r)
 			durs[i] = time.Since(start)
 			sum += durs[i].Microseconds()
 			if err != nil {

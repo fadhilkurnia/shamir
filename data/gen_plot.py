@@ -20,7 +20,7 @@ proc_time_ssms_avg = data_ssms.iloc[:,2]
 proc_time_ssms_std_err = data_ssms.iloc[:,3]
 
 fig, ax = plt.subplots()
-fig.set_size_inches(6, 2.3)
+fig.set_size_inches(5, 3)
 
 ax.plot(sizes, proc_time_shamir_avg, label='Shamir', color='#ff7f0e')
 ax.fill_between(sizes, proc_time_shamir_avg-proc_time_shamir_std_err, proc_time_shamir_avg+proc_time_shamir_std_err, facecolor='#ff7f0e', alpha=0.5)

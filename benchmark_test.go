@@ -360,7 +360,7 @@ func TestSplitIncreasingSize(t *testing.T) {
 	}
 	defer f.Close()
 	w := bufio.NewWriter(f)
-	_, err = w.WriteString("algo,size(bytes),avg_proc_time(ms),std_err(ms)\n")
+	_, err = w.WriteString("algo,size(bytes),avg_proc_time(ms),std_err(ms),std_dev(ms)\n")
 	if err != nil {
 		t.Error(err)
 	}
@@ -375,7 +375,7 @@ func TestSplitIncreasingSize(t *testing.T) {
 
 		// warmups
 		for i:=0; i < 10; i++ {
-			_, err := shamir.Split(secretMsg, 4, 2)
+			_, err := shamir.Split(secretMsg, 5, 2)
 			if err != nil {
 				t.Error(err)
 			}
@@ -385,7 +385,7 @@ func TestSplitIncreasingSize(t *testing.T) {
 		sum := int64(0) // sum is stored in us
 		for i:=0; i < numTrials; i++ {
 			start := time.Now()
-			_, err := shamir.Split(secretMsg, 4, 2)
+			_, err := shamir.Split(secretMsg, 5, 2)
 			durs[i] = time.Since(start)
 			sum += durs[i].Microseconds()
 			if err != nil {
@@ -393,7 +393,7 @@ func TestSplitIncreasingSize(t *testing.T) {
 			}
 		}
 
-		// counting average and std.err (in ms)
+		// counting average, std.err, and std.dev (in ms)
 		avgDur := float64(sum)/1000.0/float64(numTrials)
 		stdDev := 0.0
 		for i:=0; i < numTrials; i++ {
@@ -403,7 +403,7 @@ func TestSplitIncreasingSize(t *testing.T) {
 		stdErr := stdDev / math.Sqrt(float64(numTrials))
 
 		// the results are stored in bytes for size, and ms for svg.time and std.err
-		_, err = w.WriteString(fmt.Sprintf("shamir,%d,%.4f,%.4f\n", size, avgDur, stdErr))
+		_, err = w.WriteString(fmt.Sprintf("shamir,%d,%.4f,%.4f,%.4f\n", size, avgDur, stdErr, stdDev))
 		if err != nil {
 			t.Error(err)
 		}
@@ -419,7 +419,7 @@ func TestSplitIncreasingSize(t *testing.T) {
 
 		// warmups
 		for i:=0; i < 10; i++ {
-			_, err := krawczyk.Split(secretMsg, 4, 2)
+			_, err := krawczyk.Split(secretMsg, 5, 2)
 			if err != nil {
 				t.Error(err)
 			}
@@ -429,7 +429,7 @@ func TestSplitIncreasingSize(t *testing.T) {
 		sum := int64(0) // sum is stored in us
 		for i:=0; i < numTrials; i++ {
 			start := time.Now()
-			_, err := krawczyk.Split(secretMsg, 4, 2)
+			_, err := krawczyk.Split(secretMsg, 5, 2)
 			durs[i] = time.Since(start)
 			sum += durs[i].Microseconds()
 			if err != nil {
@@ -447,7 +447,7 @@ func TestSplitIncreasingSize(t *testing.T) {
 		stdErr := stdDev / math.Sqrt(float64(numTrials))
 
 		// the results are stored in bytes for size, and ms for svg.time and std.err
-		_, err = w.WriteString(fmt.Sprintf("ssms,%d,%.4f,%.4f\n", size, avgDur, stdErr))
+		_, err = w.WriteString(fmt.Sprintf("shamir,%d,%.4f,%.4f,%.4f\n", size, avgDur, stdErr, stdDev))
 		if err != nil {
 			t.Error(err)
 		}
@@ -475,7 +475,7 @@ func TestSplitWithRandomizerAndIncreasingSize(t *testing.T) {
 	}
 	defer f.Close()
 	w := bufio.NewWriter(f)
-	_, err = w.WriteString("algo,size(bytes),avg_proc_time(ms),std_err(ms)\n")
+	_, err = w.WriteString("algo,size(bytes),avg_proc_time(ms),std_err(ms),std_dev(ms)\n")
 	if err != nil {
 		t.Error(err)
 	}
@@ -520,7 +520,7 @@ func TestSplitWithRandomizerAndIncreasingSize(t *testing.T) {
 		stdErr := stdDev / math.Sqrt(float64(numTrials))
 
 		// the results are stored in bytes for size, and ms for svg.time and std.err
-		_, err = w.WriteString(fmt.Sprintf("shamir,%d,%.4f,%.4f\n", size, avgDur, stdErr))
+		_, err = w.WriteString(fmt.Sprintf("shamir,%d,%.4f,%.4f,%.4f\n", size, avgDur, stdErr, stdDev))
 		if err != nil {
 			t.Error(err)
 		}
@@ -564,7 +564,7 @@ func TestSplitWithRandomizerAndIncreasingSize(t *testing.T) {
 		stdErr := stdDev / math.Sqrt(float64(numTrials))
 
 		// the results are stored in bytes for size, and ms for svg.time and std.err
-		_, err = w.WriteString(fmt.Sprintf("ssms,%d,%.4f,%.4f\n", size, avgDur, stdErr))
+		_, err = w.WriteString(fmt.Sprintf("shamir,%d,%.4f,%.4f,%.4f\n", size, avgDur, stdErr, stdDev))
 		if err != nil {
 			t.Error(err)
 		}

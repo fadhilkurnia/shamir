@@ -344,8 +344,72 @@ func BenchmarkSplitCombineKrawczyk10K(b *testing.B) {
 	}
 }
 
+func BenchmarkSplitHashicorp100b(b *testing.B) {
+	b.SetBytes(int64(len(bytes100)))
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, _ = hcShamir.Split(bytes100, 5, 2)
+	}
+}
+
+func BenchmarkSplitGoShamir100b(b *testing.B) {
+	b.SetBytes(int64(len(bytes100)))
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, _ = shamir.Split(bytes100, 5, 2)
+	}
+}
+
+func BenchmarkSplitHashicorp1K(b *testing.B) {
+	b.SetBytes(int64(len(bytes1k)))
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, _ = hcShamir.Split(bytes1k, 5, 2)
+	}
+}
+
+func BenchmarkSplitGoShamir1K(b *testing.B) {
+	b.SetBytes(int64(len(bytes1k)))
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, _ = shamir.Split(bytes1k, 5, 2)
+	}
+}
+
+func BenchmarkSplitHashicorp10K(b *testing.B) {
+	b.SetBytes(int64(len(bytes10k)))
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, _ = hcShamir.Split(bytes10k, 5, 2)
+	}
+}
+
+func BenchmarkSplitGoShamir10K(b *testing.B) {
+	b.SetBytes(int64(len(bytes1k)))
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, _ = shamir.Split(bytes10k, 5, 2)
+	}
+}
+
+func BenchmarkSplitHashicorp1M(b *testing.B) {
+	b.SetBytes(int64(len(bytes1M)))
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, _ = hcShamir.Split(bytes1M, 5, 2)
+	}
+}
+
+func BenchmarkSplitGoShamir1M(b *testing.B) {
+	b.SetBytes(int64(len(bytes1M)))
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, _ = shamir.Split(bytes1M, 5, 2)
+	}
+}
+
 func TestSplitIncreasingSize(t *testing.T) {
-	numTrials := 50
+	numTrials := 1000
 	sizes := make([]int, 0)
 	for size := 10; size < 5_000; size += 10 {
 		sizes = append(sizes, size)
@@ -374,7 +438,7 @@ func TestSplitIncreasingSize(t *testing.T) {
 		runtime.GC()
 
 		// warmups
-		for i:=0; i < 10; i++ {
+		for i := 0; i < 10; i++ {
 			_, err := shamir.Split(secretMsg, 5, 2)
 			if err != nil {
 				t.Error(err)
@@ -383,7 +447,7 @@ func TestSplitIncreasingSize(t *testing.T) {
 
 		durs := make([]time.Duration, numTrials)
 		sum := int64(0) // sum is stored in us
-		for i:=0; i < numTrials; i++ {
+		for i := 0; i < numTrials; i++ {
 			start := time.Now()
 			_, err := shamir.Split(secretMsg, 5, 2)
 			durs[i] = time.Since(start)
@@ -394,12 +458,12 @@ func TestSplitIncreasingSize(t *testing.T) {
 		}
 
 		// counting average, std.err, and std.dev (in ms)
-		avgDur := float64(sum)/1000.0/float64(numTrials)
+		avgDur := float64(sum) / 1000.0 / float64(numTrials)
 		stdDev := 0.0
-		for i:=0; i < numTrials; i++ {
-			stdDev += math.Pow(float64(durs[i].Nanoseconds())/1000000.0 - avgDur, 2)
+		for i := 0; i < numTrials; i++ {
+			stdDev += math.Pow(float64(durs[i].Nanoseconds())/1000000.0-avgDur, 2)
 		}
-		stdDev = math.Sqrt(stdDev/float64(numTrials))
+		stdDev = math.Sqrt(stdDev / float64(numTrials))
 		stdErr := stdDev / math.Sqrt(float64(numTrials))
 
 		// the results are stored in bytes for size, and ms for svg.time and std.err
@@ -418,7 +482,7 @@ func TestSplitIncreasingSize(t *testing.T) {
 		runtime.GC()
 
 		// warmups
-		for i:=0; i < 10; i++ {
+		for i := 0; i < 10; i++ {
 			_, err := krawczyk.Split(secretMsg, 5, 2)
 			if err != nil {
 				t.Error(err)
@@ -427,7 +491,7 @@ func TestSplitIncreasingSize(t *testing.T) {
 
 		durs := make([]time.Duration, numTrials)
 		sum := int64(0) // sum is stored in us
-		for i:=0; i < numTrials; i++ {
+		for i := 0; i < numTrials; i++ {
 			start := time.Now()
 			_, err := krawczyk.Split(secretMsg, 5, 2)
 			durs[i] = time.Since(start)
@@ -438,12 +502,12 @@ func TestSplitIncreasingSize(t *testing.T) {
 		}
 
 		// counting average and std.err (in ms)
-		avgDur := float64(sum)/1000.0/float64(numTrials)
+		avgDur := float64(sum) / 1000.0 / float64(numTrials)
 		stdDev := 0.0
-		for i:=0; i < numTrials; i++ {
-			stdDev += math.Pow(float64(durs[i].Nanoseconds())/1000000.0 - avgDur, 2)
+		for i := 0; i < numTrials; i++ {
+			stdDev += math.Pow(float64(durs[i].Nanoseconds())/1000000.0-avgDur, 2)
 		}
-		stdDev = math.Sqrt(stdDev/float64(numTrials))
+		stdDev = math.Sqrt(stdDev / float64(numTrials))
 		stdErr := stdDev / math.Sqrt(float64(numTrials))
 
 		// the results are stored in bytes for size, and ms for svg.time and std.err
@@ -460,7 +524,7 @@ func TestSplitIncreasingSize(t *testing.T) {
 }
 
 func TestSplitWithRandomizerAndIncreasingSize(t *testing.T) {
-	numTrials := 50
+	numTrials := 1000
 	sizes := make([]int, 0)
 	for size := 10; size < 5_000; size += 10 {
 		sizes = append(sizes, size)
@@ -491,7 +555,7 @@ func TestSplitWithRandomizerAndIncreasingSize(t *testing.T) {
 		runtime.GC()
 
 		// warmups
-		for i:=0; i < 10; i++ {
+		for i := 0; i < 10; i++ {
 			_, err := shamir.SplitWithRandomizer(secretMsg, 5, 2, r)
 			if err != nil {
 				t.Error(err)
@@ -500,7 +564,7 @@ func TestSplitWithRandomizerAndIncreasingSize(t *testing.T) {
 
 		durs := make([]time.Duration, numTrials)
 		sum := int64(0) // sum is stored in us
-		for i:=0; i < numTrials; i++ {
+		for i := 0; i < numTrials; i++ {
 			start := time.Now()
 			_, err := shamir.SplitWithRandomizer(secretMsg, 5, 2, r)
 			durs[i] = time.Since(start)
@@ -511,12 +575,12 @@ func TestSplitWithRandomizerAndIncreasingSize(t *testing.T) {
 		}
 
 		// counting average and std.err (in ms)
-		avgDur := float64(sum)/1000.0/float64(numTrials)
+		avgDur := float64(sum) / 1000.0 / float64(numTrials)
 		stdDev := 0.0
-		for i:=0; i < numTrials; i++ {
-			stdDev += math.Pow(float64(durs[i].Nanoseconds())/1000000.0 - avgDur, 2)
+		for i := 0; i < numTrials; i++ {
+			stdDev += math.Pow(float64(durs[i].Nanoseconds())/1000000.0-avgDur, 2)
 		}
-		stdDev = math.Sqrt(stdDev/float64(numTrials))
+		stdDev = math.Sqrt(stdDev / float64(numTrials))
 		stdErr := stdDev / math.Sqrt(float64(numTrials))
 
 		// the results are stored in bytes for size, and ms for svg.time and std.err
@@ -535,7 +599,7 @@ func TestSplitWithRandomizerAndIncreasingSize(t *testing.T) {
 		runtime.GC()
 
 		// warmups
-		for i:=0; i < 10; i++ {
+		for i := 0; i < 10; i++ {
 			_, err := krawczyk.SplitWithRandomizer(secretMsg, 5, 2, r)
 			if err != nil {
 				t.Error(err)
@@ -544,7 +608,7 @@ func TestSplitWithRandomizerAndIncreasingSize(t *testing.T) {
 
 		durs := make([]time.Duration, numTrials)
 		sum := int64(0) // sum is stored in us
-		for i:=0; i < numTrials; i++ {
+		for i := 0; i < numTrials; i++ {
 			start := time.Now()
 			_, err := krawczyk.SplitWithRandomizer(secretMsg, 5, 2, r)
 			durs[i] = time.Since(start)
@@ -555,12 +619,12 @@ func TestSplitWithRandomizerAndIncreasingSize(t *testing.T) {
 		}
 
 		// counting average and std.err (in ms)
-		avgDur := float64(sum)/1000.0/float64(numTrials)
+		avgDur := float64(sum) / 1000.0 / float64(numTrials)
 		stdDev := 0.0
-		for i:=0; i < numTrials; i++ {
-			stdDev += math.Pow(float64(durs[i].Nanoseconds())/1000000.0 - avgDur, 2)
+		for i := 0; i < numTrials; i++ {
+			stdDev += math.Pow(float64(durs[i].Nanoseconds())/1000000.0-avgDur, 2)
 		}
-		stdDev = math.Sqrt(stdDev/float64(numTrials))
+		stdDev = math.Sqrt(stdDev / float64(numTrials))
 		stdErr := stdDev / math.Sqrt(float64(numTrials))
 
 		// the results are stored in bytes for size, and ms for svg.time and std.err

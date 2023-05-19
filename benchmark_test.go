@@ -2,10 +2,13 @@ package main
 
 import (
 	"bufio"
+	rand2 "crypto/rand"
+	"crypto/rsa"
 	"fmt"
 	"github.com/fadhilkurnia/shamir/csprng"
 	"github.com/fadhilkurnia/shamir/krawczyk"
 	"github.com/fadhilkurnia/shamir/shamir"
+	"github.com/hashicorp/vault/helper/dhutil"
 	hcShamir "github.com/hashicorp/vault/shamir"
 	"github.com/klauspost/reedsolomon"
 	"math"
@@ -524,7 +527,7 @@ func TestSplitIncreasingSize(t *testing.T) {
 }
 
 func TestSplitWithRandomizerAndIncreasingSize(t *testing.T) {
-	numTrials := 1000
+	numTrials := 10
 	sizes := make([]int, 0)
 	for size := 10; size < 5_000; size += 10 {
 		sizes = append(sizes, size)
@@ -588,6 +591,11 @@ func TestSplitWithRandomizerAndIncreasingSize(t *testing.T) {
 		if err != nil {
 			t.Error(err)
 		}
+
+		// stop the measurement if the latency is > 1 second
+		if avgDur > 1000 {
+			break
+		}
 	}
 
 	// krawczyk secret sharing (ssms)
@@ -637,5 +645,176 @@ func TestSplitWithRandomizerAndIncreasingSize(t *testing.T) {
 		if err != nil {
 			t.Error(err)
 		}
+
+		// stop the measurement if the latency is > 1 second
+		if avgDur > 1000 {
+			break
+		}
 	}
+}
+
+// TestPrivacyPreservingEncoding measure the overhead of
+// - shamir secret-sharing
+// - secret-sharing made short (SSMS or Krawczyk)
+// - symmetric encryption
+// - asymmetric encryption
+func TestPrivacyPreservingEncoding(t *testing.T) {
+	TestSplitWithRandomizerAndIncreasingSize(t)
+
+	numTrials := 10
+	sizes := make([]int, 0)
+	for size := 10; size < 5_000; size += 10 {
+		sizes = append(sizes, size)
+	}
+	for size := 5_000; size < 200_000; size += 1000 {
+		sizes = append(sizes, size)
+	}
+
+	r := csprng.NewCSPRNG()
+
+	f, err := os.OpenFile("data/proc_time_randomizer.csv", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		t.Error(err)
+	}
+	defer f.Close()
+	w := bufio.NewWriter(f)
+
+	// symmetric encryption with AES-256
+	for s := 0; s < len(sizes); s++ {
+		size := sizes[s]
+		secretKey := []byte("iniadalahsebuahkatasandirahasia!")
+		secretMsg := make([]byte, size)
+		_, _ = r.Read(secretMsg)
+
+		runtime.GC()
+
+		// warmups
+		for i := 0; i < 10; i++ {
+			_, _, err := dhutil.EncryptAES(secretKey, secretMsg, nil)
+			if err != nil {
+				t.Error(err)
+			}
+		}
+
+		// run the actual measurements
+		durs := make([]time.Duration, numTrials)
+		sum := int64(0) // sum is stored in us
+		for i := 0; i < numTrials; i++ {
+			start := time.Now()
+			_, _, err := dhutil.EncryptAES(secretKey, secretMsg, nil)
+			durs[i] = time.Since(start)
+			sum += durs[i].Microseconds()
+			if err != nil {
+				t.Error(err)
+			}
+		}
+
+		// counting average and std.err (in ms)
+		avgDur := float64(sum) / 1000.0 / float64(numTrials)
+		stdDev := 0.0
+		for i := 0; i < numTrials; i++ {
+			stdDev += math.Pow(float64(durs[i].Nanoseconds())/1000000.0-avgDur, 2)
+		}
+		stdDev = math.Sqrt(stdDev / float64(numTrials))
+		stdErr := stdDev / math.Sqrt(float64(numTrials))
+
+		// the results are stored in bytes for size, and ms for svg.time and std.err
+		_, err = w.WriteString(fmt.Sprintf("aes256,%d,%.4f,%.4f,%.4f\n", size, avgDur, stdErr, stdDev))
+		if err != nil {
+			t.Error(err)
+		}
+
+		err = w.Flush()
+		if err != nil {
+			t.Error(err)
+		}
+
+		// stop the measurement if the latency is > 1 second
+		if avgDur > 1000 {
+			break
+		}
+	}
+
+	// asymmetric encryption with RSA
+	for s := 0; s < len(sizes); s++ {
+		size := sizes[s]
+		secretMsg := make([]byte, size)
+		_, _ = r.Read(secretMsg)
+
+		privateKey, err := rsa.GenerateKey(rand2.Reader, 2048)
+		if err != nil {
+			t.Error(err)
+		}
+
+		runtime.GC()
+
+		// RSA with 2048-bit key can only encrypt up-to 256 bytes
+		// source: https://crypto.stackexchange.com/questions/103171/max-message-length-when-encrypting-with-public-key
+		// so we split the secretMsg into multiple parts
+		partSize := 240
+		numParts := len(secretMsg)/partSize + 1
+
+		// warmups
+		for i := 0; i < 10; i++ {
+			for j := 0; j < numParts; j++ {
+				startIdx := j*partSize
+				endIdx := (j+1)*partSize + 1
+				if endIdx > len(secretMsg) {
+					endIdx = len(secretMsg)
+				}
+				_, err := rsa.EncryptPKCS1v15(rand2.Reader, &privateKey.PublicKey, secretMsg[startIdx:endIdx])
+				if err != nil {
+					t.Errorf("message size: %d, part: %d, err: %v", len(secretMsg[startIdx:endIdx]), j, err)
+				}
+			}
+		}
+
+		// run the actual measurements
+		durs := make([]time.Duration, numTrials)
+		sum := int64(0) // sum is stored in us
+		for i := 0; i < numTrials; i++ {
+			start := time.Now()
+			for j := 0; j < numParts; j++ {
+				startIdx := j * partSize
+				endIdx := (j+1)*partSize + 1
+				if endIdx > len(secretMsg) {
+					endIdx = len(secretMsg)
+				}
+
+				_, err := rsa.EncryptPKCS1v15(rand2.Reader, &privateKey.PublicKey, secretMsg[startIdx:endIdx])
+				durs[i] = time.Since(start)
+				sum += durs[i].Microseconds()
+				if err != nil {
+					t.Errorf("message size: %d, part: %d, err: %v", len(secretMsg[startIdx:endIdx]), j, err)
+				}
+
+			}
+		}
+
+		// counting average and std.err (in ms)
+		avgDur := float64(sum) / 1000.0 / float64(numTrials)
+		stdDev := 0.0
+		for i := 0; i < numTrials; i++ {
+			stdDev += math.Pow(float64(durs[i].Nanoseconds())/1000000.0-avgDur, 2)
+		}
+		stdDev = math.Sqrt(stdDev / float64(numTrials))
+		stdErr := stdDev / math.Sqrt(float64(numTrials))
+
+		// the results are stored in bytes for size, and ms for svg.time and std.err
+		_, err = w.WriteString(fmt.Sprintf("rsa,%d,%.4f,%.4f,%.4f\n", size, avgDur, stdErr, stdDev))
+		if err != nil {
+			t.Error(err)
+		}
+
+		err = w.Flush()
+		if err != nil {
+			t.Error(err)
+		}
+
+		// stop the measurement if the latency is > 1 second
+		if avgDur > 1000 {
+			break
+		}
+	}
+
 }

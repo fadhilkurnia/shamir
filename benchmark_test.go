@@ -593,7 +593,7 @@ func BenchmarkRSAModeGCM(b *testing.B) {
 }
 
 func TestSplitWithRandomizerAndIncreasingSize(t *testing.T) {
-	numTrials := 10
+	numTrials := 10000
 	sizes := make([]int, 0)
 	for size := 10; size < 5_000; size += 10 {
 		sizes = append(sizes, size)
@@ -740,7 +740,7 @@ func encryptAES(key []byte, plaintext []byte) ([]byte, error){
 func TestPrivacyPreservingEncoding(t *testing.T) {
 	TestSplitWithRandomizerAndIncreasingSize(t)
 
-	numTrials := 10
+	numTrials := 10000
 	sizes := make([]int, 0)
 	for size := 10; size < 5_000; size += 10 {
 		sizes = append(sizes, size)

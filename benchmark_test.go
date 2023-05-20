@@ -955,8 +955,9 @@ func TestThroughputShamir(t *testing.T) {
 
 	for i := 0; i < numThreads; i++ {
 		go func() {
+			r := csprng.NewCSPRNG()
 			for in := range input {
-				res, _ := shamir.Split(in, 4, 2)
+				res, _ := shamir.SplitWithRandomizer(in, 4, 2, r)
 				output <- res
 			}
 		}()
@@ -998,8 +999,9 @@ func TestThroughputSSMS(t *testing.T) {
 
 	for i := 0; i < numThreads; i++ {
 		go func() {
+			r := csprng.NewCSPRNG()
 			for in := range input {
-				res, _ := krawczyk.Split(in, 4, 2)
+				res, _ := krawczyk.SplitWithRandomizer(in, 4, 2, r)
 				output <- res
 			}
 		}()

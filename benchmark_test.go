@@ -17,6 +17,7 @@ import (
 	"math/rand"
 	"os"
 	"runtime"
+	"sync"
 	"testing"
 	"time"
 )
@@ -896,4 +897,134 @@ func TestPrivacyPreservingEncoding(t *testing.T) {
 		}
 	}
 
+}
+
+func TestThroughputAES(t *testing.T) {
+	secretKey := []byte("iniadalahsebuahkatasandirahasia!")
+	numThreads := runtime.NumCPU()
+	numRequest := 1_000_000
+	reqSize := 50
+
+	data := make([]byte, reqSize)
+	rand.Read(data)
+	input := make(chan []byte, 1_000)
+	output := make(chan []byte, 1_000)
+
+	for i := 0; i < numThreads; i++ {
+		go func() {
+			for in := range input {
+				res, _ := encryptAES(secretKey, in)
+				output <- res
+			}
+		}()
+	}
+
+	start := time.Now()
+	go func() {
+		for i := 0; i < numRequest; i++ {
+			in := make([]byte, 50)
+			copy(in, data)
+			input <- in
+		}
+	}()
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for i := 0; i < numRequest; i++ {
+			<- output
+		}
+	}()
+	wg.Wait()
+
+	dur := time.Since(start)
+	t.Log("#workers ", runtime.NumCPU())
+	t.Log("duration ", dur)
+	t.Log("throughput ", float64(numRequest)/dur.Seconds(), "req/s")
+}
+
+func TestThroughputShamir(t *testing.T) {
+	numThreads := runtime.NumCPU()
+	numRequest := 1_000_000
+	reqSize := 50
+
+	data := make([]byte, reqSize)
+	rand.Read(data)
+	input := make(chan []byte, 1_000)
+	output := make(chan [][]byte, 1_000)
+
+	for i := 0; i < numThreads; i++ {
+		go func() {
+			for in := range input {
+				res, _ := shamir.Split(in, 4, 2)
+				output <- res
+			}
+		}()
+	}
+
+	start := time.Now()
+	go func() {
+		for i := 0; i < numRequest; i++ {
+			in := make([]byte, 50)
+			copy(in, data)
+			input <- in
+		}
+	}()
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for i := 0; i < numRequest; i++ {
+			<- output
+		}
+	}()
+	wg.Wait()
+
+	dur := time.Since(start)
+	t.Log("#workers ", runtime.NumCPU())
+	t.Log("duration ", dur)
+	t.Log("throughput ", float64(numRequest)/dur.Seconds(), "req/s")
+}
+
+func TestThroughputSSMS(t *testing.T) {
+	numThreads := runtime.NumCPU()
+	numRequest := 1_000_000
+	reqSize := 50
+
+	data := make([]byte, reqSize)
+	rand.Read(data)
+	input := make(chan []byte, 1_000)
+	output := make(chan [][]byte, 1_000)
+
+	for i := 0; i < numThreads; i++ {
+		go func() {
+			for in := range input {
+				res, _ := krawczyk.Split(in, 4, 2)
+				output <- res
+			}
+		}()
+	}
+
+	start := time.Now()
+	go func() {
+		for i := 0; i < numRequest; i++ {
+			in := make([]byte, 50)
+			copy(in, data)
+			input <- in
+		}
+	}()
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for i := 0; i < numRequest; i++ {
+			<- output
+		}
+	}()
+	wg.Wait()
+
+	dur := time.Since(start)
+	t.Log("#workers ", runtime.NumCPU())
+	t.Log("duration ", dur)
+	t.Log("throughput ", float64(numRequest)/dur.Seconds(), "req/s")
 }

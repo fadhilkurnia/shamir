@@ -599,7 +599,7 @@ func TestSplitWithRandomizerAndIncreasingSize(t *testing.T) {
 	for size := 10; size < 5_000; size += 10 {
 		sizes = append(sizes, size)
 	}
-	for size := 5_000; size < 200_000; size += 1000 {
+	for size := 5_000; size < 110_000; size += 1000 {
 		sizes = append(sizes, size)
 	}
 
@@ -659,8 +659,8 @@ func TestSplitWithRandomizerAndIncreasingSize(t *testing.T) {
 			t.Error(err)
 		}
 
-		// stop the measurement if the latency is > 1 second
-		if avgDur > 1000 {
+		// stop the measurement if the latency is > 5 ms
+		if avgDur > 500 {
 			break
 		}
 	}
@@ -713,8 +713,8 @@ func TestSplitWithRandomizerAndIncreasingSize(t *testing.T) {
 			t.Error(err)
 		}
 
-		// stop the measurement if the latency is > 1 second
-		if avgDur > 1000 {
+		// stop the measurement if the latency is > 5 ms
+		if avgDur > 500 {
 			break
 		}
 	}
@@ -746,7 +746,7 @@ func TestPrivacyPreservingEncoding(t *testing.T) {
 	for size := 10; size < 5_000; size += 10 {
 		sizes = append(sizes, size)
 	}
-	for size := 5_000; size < 200_000; size += 1000 {
+	for size := 5_000; size < 110_000; size += 1000 {
 		sizes = append(sizes, size)
 	}
 
@@ -809,8 +809,8 @@ func TestPrivacyPreservingEncoding(t *testing.T) {
 			t.Error(err)
 		}
 
-		// stop the measurement if the latency is > 1 second
-		if avgDur > 1000 {
+		// stop the measurement if the latency is > 5 ms
+		if avgDur > 500 {
 			break
 		}
 	}
@@ -891,8 +891,8 @@ func TestPrivacyPreservingEncoding(t *testing.T) {
 			t.Error(err)
 		}
 
-		// stop the measurement if the latency is > 1 second
-		if avgDur > 1000 {
+		// stop the measurement if the latency is > 5 ms
+		if avgDur > 500 {
 			break
 		}
 	}

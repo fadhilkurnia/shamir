@@ -2,13 +2,15 @@ package main
 
 import (
 	"bufio"
+	"bytes"
+	"crypto/aes"
+	"crypto/cipher"
 	rand2 "crypto/rand"
 	"crypto/rsa"
 	"fmt"
 	"github.com/fadhilkurnia/shamir/csprng"
 	"github.com/fadhilkurnia/shamir/krawczyk"
 	"github.com/fadhilkurnia/shamir/shamir"
-	"github.com/hashicorp/vault/helper/dhutil"
 	hcShamir "github.com/hashicorp/vault/shamir"
 	"github.com/klauspost/reedsolomon"
 	"math"
@@ -526,6 +528,70 @@ func TestSplitIncreasingSize(t *testing.T) {
 	}
 }
 
+func TestRSAModeOBF(t *testing.T) {
+	// CTR vs OFB vs GCM
+	plaintext := make([]byte, 32)
+	key := make([]byte, 32)
+	block, _ := aes.NewCipher(key)
+	var iv [aes.BlockSize]byte
+	stream := cipher.NewOFB(block, iv[:])
+
+	ciphertext := make([]byte, len(plaintext))
+	stream.XORKeyStream(ciphertext, plaintext)
+
+	decrypted := make([]byte, len(plaintext))
+	block, _ = aes.NewCipher(key)
+	stream2 := cipher.NewOFB(block, iv[:])
+	stream2.XORKeyStream(decrypted, ciphertext)
+
+	if !bytes.Equal(plaintext, decrypted) {
+		t.Errorf("not equal %v %v", plaintext, decrypted)
+	}
+}
+
+func BenchmarkRSAModeOBF(b *testing.B) {
+	// CTR vs OFB vs GCM
+	plaintext := make([]byte, 1_000_000)
+	key := make([]byte, 32)
+
+	for i := 0; i < b.N; i++ {
+		block, _ := aes.NewCipher(key)
+		var iv [aes.BlockSize]byte
+		stream := cipher.NewOFB(block, iv[:])
+		ciphertext := make([]byte, len(plaintext))
+		stream.XORKeyStream(ciphertext, plaintext)
+	}
+}
+
+func BenchmarkRSAModeCTR(b *testing.B) {
+	// CTR vs OFB vs GCM
+	plaintext := make([]byte, 1_000_000)
+	key := make([]byte, 32)
+
+	for i := 0; i < b.N; i++ {
+		block, _ := aes.NewCipher(key)
+		var iv [aes.BlockSize]byte
+		stream := cipher.NewCTR(block, iv[:])
+
+		ciphertext := make([]byte, len(plaintext))
+		stream.XORKeyStream(ciphertext, plaintext)
+	}
+}
+
+func BenchmarkRSAModeGCM(b *testing.B) {
+	// CTR vs OFB vs GCM
+	plaintext := make([]byte, 1_000_000)
+	key := make([]byte, 32)
+
+	for i := 0; i < b.N; i++ {
+		block, _ := aes.NewCipher(key)
+		iv := make([]byte, 12)
+		stream, _ := cipher.NewGCM(block)
+		ciphertext := make([]byte, len(plaintext))
+		stream.Seal(ciphertext, iv, plaintext, nil)
+	}
+}
+
 func TestSplitWithRandomizerAndIncreasingSize(t *testing.T) {
 	numTrials := 10
 	sizes := make([]int, 0)
@@ -653,6 +719,19 @@ func TestSplitWithRandomizerAndIncreasingSize(t *testing.T) {
 	}
 }
 
+func encryptAES(key []byte, plaintext []byte) ([]byte, error){
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, err
+	}
+	var iv [aes.BlockSize]byte
+	stream := cipher.NewCTR(block, iv[:])
+
+	ciphertext := make([]byte, len(plaintext))
+	stream.XORKeyStream(ciphertext, plaintext)
+	return ciphertext, nil
+}
+
 // TestPrivacyPreservingEncoding measure the overhead of
 // - shamir secret-sharing
 // - secret-sharing made short (SSMS or Krawczyk)
@@ -690,7 +769,7 @@ func TestPrivacyPreservingEncoding(t *testing.T) {
 
 		// warmups
 		for i := 0; i < 10; i++ {
-			_, _, err := dhutil.EncryptAES(secretKey, secretMsg, nil)
+			_, err := encryptAES(secretKey, secretMsg)
 			if err != nil {
 				t.Error(err)
 			}
@@ -701,7 +780,7 @@ func TestPrivacyPreservingEncoding(t *testing.T) {
 		sum := int64(0) // sum is stored in us
 		for i := 0; i < numTrials; i++ {
 			start := time.Now()
-			_, _, err := dhutil.EncryptAES(secretKey, secretMsg, nil)
+			_, err := encryptAES(secretKey, secretMsg)
 			durs[i] = time.Since(start)
 			sum += durs[i].Microseconds()
 			if err != nil {
